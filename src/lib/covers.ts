@@ -19,7 +19,7 @@ export function resolveCoverUrl(
     const query = size === 'thumb' || size === 'hero' ? `?size=${size}&v=3` : '';
     return `/media/${trimmed}${query}`;
   }
-  return '/brand/nox-symbol.webp';
+  return '/brand/nox-symbol.webp?v=3';
 }
 
 /** Return the canonical original media URL for a failed derived variant. */

@@ -107,8 +107,8 @@
     const onError = () => {
       if (node.src.includes('size=thumb') || node.src.includes('size=hero')) {
         node.src = resolveOriginalCoverUrl(node.src);
-      } else if (!node.src.endsWith('/brand/nox-symbol.webp')) {
-        node.src = '/brand/nox-symbol.webp';
+      } else if (!node.src.includes('/brand/nox-symbol.webp')) {
+        node.src = '/brand/nox-symbol.webp?v=3';
       }
     };
     node.addEventListener('error', onError);

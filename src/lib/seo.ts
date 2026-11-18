@@ -32,7 +32,7 @@ export function workStructuredData(work: Work, tags: { name: string; kind: strin
           ? {
               image:
                 work.content_rating === 'ADULT_18'
-                  ? `${origin}/brand/nox-symbol-256.webp`
+                  ? `${origin}/brand/nox-symbol-256.webp?v=3`
                   : `${origin}/media/${work.cover_id}`
             }
           : {}),

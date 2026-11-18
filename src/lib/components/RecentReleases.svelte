@@ -59,8 +59,8 @@
         node.src = resolveOriginalCoverUrl(node.src);
         return;
       }
-      if (!node.src.endsWith('/brand/nox-symbol.webp')) {
-        node.src = '/brand/nox-symbol.webp';
+      if (!node.src.includes('/brand/nox-symbol.webp')) {
+        node.src = '/brand/nox-symbol.webp?v=3';
       }
     };
     node.addEventListener('error', onError);

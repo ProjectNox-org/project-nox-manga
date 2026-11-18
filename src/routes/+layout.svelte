@@ -172,7 +172,7 @@
   {#if !currentPath?.startsWith('/obra/')}
     <meta
       property="og:image"
-      content="{(data.siteUrl || 'https://projectnox.org')}/brand/nox-symbol-256.webp"
+      content="{(data.siteUrl || 'https://projectnox.org')}/brand/nox-symbol-256.webp?v=3"
     />
     <meta property="og:image:type" content="image/webp" />
     <meta property="og:image:width" content="256" />
@@ -180,7 +180,7 @@
     <meta name="twitter:card" content="summary" />
     <meta
       name="twitter:image"
-      content="{(data.siteUrl || 'https://projectnox.org')}/brand/nox-symbol-256.webp"
+      content="{(data.siteUrl || 'https://projectnox.org')}/brand/nox-symbol-256.webp?v=3"
     />
     <link rel="canonical" href="{`https://projectnox.org${currentPath === '/' ? '' : currentPath}`}" />
     <meta property="og:url" content="{`https://projectnox.org${currentPath === '/' ? '' : currentPath}`}" />
@@ -201,7 +201,7 @@
       <a href="/" class="brand" aria-label="Project Nox, início">
         <div class="brand-symbol-wrap">
           <img
-            src="/brand/nox-symbol-64.webp"
+            src="/brand/nox-symbol-128.webp?v=3"
             alt="Project Nox"
             width="46"
             height="46"
@@ -430,7 +430,7 @@
       <div class="footer-brand-col">
         <a class="footer-brand" href="/">
           <img
-            src="/brand/nox-symbol-64.webp"
+            src="/brand/nox-symbol-64.webp?v=3"
             alt=""
             width="32"
             height="32"

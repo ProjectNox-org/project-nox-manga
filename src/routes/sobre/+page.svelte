@@ -5,7 +5,7 @@
     <div style="display: inline-flex; position: relative; align-items: center; justify-content: center; margin-bottom: 20px;">
       <div style="position: absolute; width: 140px; height: 140px; border-radius: 50%; background: radial-gradient(circle, rgba(181, 154, 245, 0.35), transparent 70%); filter: blur(24px);"></div>
       <img
-        src="/brand/nox-symbol-256.webp"
+        src="/brand/nox-symbol-256.webp?v=3"
         alt="Símbolo Oficial Project Nox"
         width="100"
         height="100"

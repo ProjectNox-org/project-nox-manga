@@ -266,8 +266,8 @@ export const load = async ({ locals, params, url, cookies, platform, setHeaders 
     : null;
 
   const metaImage = isAdult
-    ? `${url.origin}/brand/nox-symbol-256.webp`
-    : coverUrl || `${url.origin}/brand/nox-symbol-256.webp`;
+    ? `${url.origin}/brand/nox-symbol-256.webp?v=3`
+    : coverUrl || `${url.origin}/brand/nox-symbol-256.webp?v=3`;
 
   return {
     work,

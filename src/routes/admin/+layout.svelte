@@ -280,7 +280,7 @@
     <div class="sidebar-header">
       <div class="brand-cluster">
         <img
-          src="/brand/nox-symbol-64.webp"
+          src="/brand/nox-symbol-128.webp?v=3"
           alt="Project Nox"
           width="34"
           height="34"
@@ -794,7 +794,7 @@
       <div class="mobile-brand-group">
         <a href="/" class="mobile-brand-link" title="Voltar ao site público">
           <img
-            src="/brand/nox-symbol-64.webp"
+            src="/brand/nox-symbol-128.webp?v=3"
             alt="Project Nox"
             width="34"
             height="34"
