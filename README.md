@@ -16,29 +16,26 @@ Por se tratar de um projeto em evolução contínua — sujeito a melhorias e re
 
 ## O papel do Project Nox Importer
 
-O ecossistema de leitura é composto por dois projetos independentes com responsabilidades bem definidas:
+O ecossistema de leitura é composto por dois projetos independentes:
 
-- **Project Nox Mangá:** a plataforma web com a qual o leitor interage para explorar obras e ler capítulos.
-- [**Project Nox Importer**](https://github.com/ProjectNox-org/project-nox-importer): o serviço separado responsável por alimentar e preparar o catálogo utilizado pela plataforma.
+- **Project Nox Mangá:** a plataforma web usada pelo leitor para explorar obras e ler capítulos.
+- [**Project Nox Importer**](https://github.com/ProjectNox-org/project-nox-importer): o serviço dedicado à ingestão de conteúdo, executado fora da interface pública.
 
 > O Importer alimenta o catálogo; o site permite ao usuário explorar e ler as obras.
 
-De forma contínua e desacoplada da interface, o **Project Nox Importer** tem como responsabilidades principais:
+Suas principais atribuições incluem:
 
 1. Consultar as fontes de conteúdo configuradas.
 2. Identificar obras e capítulos disponíveis.
 3. Extrair e organizar os metadados do catálogo.
 4. Processar páginas e arquivos de mídia.
-5. Validar e preparar os dados para utilização segura pela plataforma.
-6. Disponibilizar as informações necessárias para que a aplicação web apresente as obras e seus capítulos.
-
-Essa divisão entre serviço de ingestão e aplicação de leitura é uma base conceitual permanente do ecossistema, independentemente das tecnologias internas adotadas em cada fase do projeto.
+5. Validar os registros antes de disponibilizá-los ao catálogo.
 
 ## Como funciona o ecossistema
 
 **Fontes configuradas → Project Nox Importer → Catálogo da plataforma → Leitor web**
 
-O **Project Nox Importer** executa previamente a coleta, validação e organização do conteúdo em um fluxo automatizado separado. Assim, a leitura realizada pelo visitante na aplicação web consome um catálogo já estruturado e validado, sem confundir o trabalho de ingestão em segundo plano com a experiência de navegação do leitor.
+Esse fluxo desacoplado permite que a atualização do acervo aconteça de forma automatizada em segundo plano, enquanto a aplicação web foca exclusivamente na navegação e na leitura de um catálogo já estruturado. Trata-se de um princípio arquitetural permanente do projeto, válido independentemente das tecnologias adotadas ao longo de sua evolução.
 
 ## Código aberto e desenvolvimento
 
