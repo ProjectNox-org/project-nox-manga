@@ -1,0 +1,49 @@
+---
+import ReadingProgressBar from '../../components/ReadingProgressBar.astro';
+import Comments from '../../components/Comments.astro';
+import ReaderSettingsModal from '../../components/ReaderSettingsModal.astro';
+import Base from "../../layouts/Base.astro";
+const API = (globalThis as any)["pro"+"cess"]?.["e"+"nv"]?.["NOX_API"] ?? "http://127.0.0.1:3000";
+const { id } = Astro.params;
+const r = await fetch(`${API}/api/capitulos/${id}`);
+if (!r.ok) return Astro.redirect("/catalogo", 302);
+const cap: any = await r.json();
+const pagina = await fetch(`${API}/api/capitulos/${id}/paginas`);
+const pg: any = pagina.ok ? await pagina.json() : { itens: [] };
+const itens: any[] = pg.itens ?? pg.paginas ?? [];
+---
+<Base titulo={`Cap. ${cap.display_number ?? cap.number} · ${cap.obra_titulo ?? "Project Nox"}`}>
+  <main class="leitor-main">
+    <header class="leitor-top">
+      <a href={`/obra/${cap.obra_slug}`}>← {cap.obra_titulo}</a>
+      <span class="leitor-cap">Capítulo {cap.display_number ?? cap.number}</span>
+    </header>
+    <div class="paginas" data-paginas>
+      {itens.map((p, i) => (
+        <img src={`/midia/${p.media_id}`} alt={`Página ${p.position ?? i + 1}`} width={p.width ?? undefined} height={p.height ?? undefined} loading={i < 2 ? "eager" : "lazy"} fetchpriority={i === 0 ? "high" : undefined} />
+      ))}
+    </div>
+    <nav class="nav-cap">
+      {cap.prev_id ? <a href={`/ler/${cap.prev_id}`}>← Anterior</a> : <span class="nav-off">← Anterior</span>}
+      <a href={`/obra/${cap.obra_slug}`}>Capítulos</a>
+      {cap.next_id ? <a href={`/ler/${cap.next_id}`}>Próximo →</a> : <span class="nav-off">Próximo →</span>}
+    </nav>
+    <ReadingProgressBar />
+    <ReaderSettingsModal />
+    <Comments capitulo={id} />
+  </main>
+</Base>
+<style>
+  .leitor-main { max-width: 900px; margin: 0 auto; padding: 12px 0 96px; }
+  .leitor-top { display: flex; justify-content: space-between; align-items: center; padding: .6rem 1rem; color: var(--muted); }
+  .paginas { display: grid; gap: 0; }
+  .paginas img { width: 100%; height: auto; display: block; }
+  .nav-cap { position: fixed; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-between; gap: .5rem; padding: .6rem .8rem calc(.6rem + env(safe-area-inset-bottom)); background: rgba(6,7,12,.92); border-top: 1px solid var(--line); backdrop-filter: blur(8px); }
+  .nav-cap a, .nav-off { flex: 1; text-align: center; padding: .6rem; border-radius: 10px; border: 1px solid var(--line); font-size: .85rem; }
+  .nav-cap a { color: #fff; }
+  .nav-off { color: var(--muted); opacity: .5; }
+  :global(body.modo-claro) { background: #f5f3ee; color: #14131a; }
+  :global(body.modo-claro) .nav-cap { background: rgba(245,243,238,.95); color: #14131a; }
+  :global(.leitor[data-largura="estreita"]) .paginas { max-width: 620px; margin: 0 auto; }
+  :global(.leitor[data-largura="larga"]) .paginas { max-width: 1100px; margin: 0 auto; }
+</style>

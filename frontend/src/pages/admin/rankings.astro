@@ -1,0 +1,9 @@
+---
+import Base from '../../layouts/Base.astro';
+import AdminTabela from '../../components/AdminTabela.astro';
+const _ck = Astro.request.headers.get('cookie') || '';
+if (!/(?:^|;\s*)nox-auth-token=/.test(_ck)) return Astro.redirect('/entrar', 302);
+---
+<Base titulo="Rankings — Admin">
+<AdminTabela secao="rankings" titulo="Rankings" />
+</Base>

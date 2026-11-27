@@ -1,0 +1,34 @@
+---
+---
+<canvas id="nox-particles" aria-hidden="true"></canvas>
+<script>
+  const cv = document.getElementById("nox-particles") as HTMLCanvasElement | null;
+  if (cv) {
+    const ctx = cv.getContext("2d")!;
+    let ps: { x: number; y: number; vx: number; vy: number; r: number }[] = [];
+    const resize = () => {
+      cv.width = innerWidth; cv.height = innerHeight;
+      const n = Math.min(90, Math.round((cv.width * cv.height) / 22000));
+      ps = Array.from({ length: n }, () => ({
+        x: Math.random() * cv.width, y: Math.random() * cv.height,
+        vx: (Math.random() - .5) * .25, vy: (Math.random() - .5) * .25,
+        r: Math.random() * 1.6 + .4,
+      }));
+    };
+    const loop = () => {
+      ctx.clearRect(0, 0, cv.width, cv.height);
+      for (const p of ps) {
+        p.x += p.vx; p.y += p.vy;
+        if (p.x < 0 || p.x > cv.width) p.vx *= -1;
+        if (p.y < 0 || p.y > cv.height) p.vy *= -1;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(181,154,245,.55)"; ctx.fill();
+      }
+      requestAnimationFrame(loop);
+    };
+    resize(); addEventListener("resize", resize); loop();
+  }
+</script>
+<style>
+  #nox-particles { position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: .5; }
+</style>

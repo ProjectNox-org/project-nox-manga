@@ -1,0 +1,16 @@
+---
+interface Props { titulo: string; texto?: string; acaoHref?: string; acaoTexto?: string; icone?: string }
+const { titulo, texto = '', acaoHref = '', acaoTexto = '', icone = '✦' } = Astro.props;
+---
+<div class="empty-notif-box empty-box">
+  <span class="empty-icon" aria-hidden="true">{icone}</span>
+  <h2 class="empty-title">{titulo}</h2>
+  {texto && <p class="empty-text">{texto}</p>}
+  {acaoHref && <a class="btn-primary-hero" href={acaoHref}>{acaoTexto || 'Continuar'}</a>}
+</div>
+<style>
+  .empty-box { display: grid; justify-items: center; gap: .55rem; text-align: center; padding: 2rem 1rem; }
+  .empty-icon { font-size: 1.6rem; color: var(--gold); }
+  .empty-title { margin: 0; font-size: 1.05rem; }
+  .empty-text { margin: 0; color: var(--muted); font-size: .9rem; max-width: 40ch; }
+</style>

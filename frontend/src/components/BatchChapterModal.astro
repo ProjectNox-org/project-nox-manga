@@ -1,0 +1,23 @@
+---
+const { slug, total = 0 } = Astro.props;
+---
+<details class="batch-modal">
+  <summary class="btn-secondary-hero">Baixar capítulos</summary>
+  <div class="batch-box">
+    <p>Escolha a faixa para download em lote ({total} capítulos publicados).</p>
+    <label class="field-label">De <input class="field-input" type="number" min="1" max={total} value="1" data-de /></label>
+    <label class="field-label">Até <input class="field-input" type="number" min="1" max={total} value={Math.min(total, 10)} data-ate /></label>
+    <a class="btn-primary-hero" data-baixar href={`/obra/${slug}`}>Preparar</a>
+  </div>
+</details>
+<script is:inline>
+  document.querySelectorAll('.batch-modal').forEach((d) => {
+    const a = d.querySelector('[data-baixar]');
+    if (!a) return;
+    a.addEventListener('click', (e) => {
+      const de = d.querySelector('[data-de]')?.value ?? 1;
+      const ate = d.querySelector('[data-ate]')?.value ?? de;
+      a.setAttribute('data-faixa', de + '-' + ate);
+    });
+  });
+</script>

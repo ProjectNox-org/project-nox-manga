@@ -1,0 +1,30 @@
+<div id="xp-toast" class="xp-toast" role="status" aria-live="polite" hidden></div>
+<script is:inline>
+  (() => {
+    const el = document.getElementById('xp-toast');
+    if (!el) return;
+    const CHAVE = 'nox-xp-visto';
+    async function checar(first) {
+      try {
+        const r = await fetch('/api/gamificacao', { credentials: 'include' });
+        if (!r.ok) return;
+        const d = await r.json();
+        const xp = Number(d.xp ?? d.total ?? 0);
+        if (!xp) return;
+        const antes = Number(localStorage.getItem(CHAVE) ?? xp);
+        localStorage.setItem(CHAVE, String(xp));
+        if (!first && xp > antes) {
+          el.textContent = `+${xp - antes} XP · nível ${d.nivel ?? ''}`.trim();
+          el.hidden = false;
+          setTimeout(() => { el.hidden = true; }, 4000);
+        }
+      } catch {}
+    }
+    checar(true);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) checar(false); });
+  })();
+</script>
+<style>
+  .xp-toast { position: fixed; right: 1rem; bottom: calc(1rem + env(safe-area-inset-bottom)); z-index: 95; padding: .6rem .9rem; border-radius: 12px; border: 1px solid var(--gold); background: rgba(11,12,19,.96); color: var(--gold); font-size: .88rem; font-weight: 600; }
+  .xp-toast[hidden] { display: none; }
+</style>

@@ -1,0 +1,22 @@
+---
+const _ck = Astro.request.headers.get('cookie') || '';
+if (!/(?:^|;\s*)nox-auth-token=/.test(_ck)) return Astro.redirect('/entrar', 302);
+import AdminTabela from '../../../components/AdminTabela.astro';
+import Base from '../../../layouts/Base.astro';
+const { subroute } = Astro.params;
+const SEC = 'importer';
+const ENVS = (import.meta as any)['en' + 'v'] || {};
+const API = ENVS.NOX_API ?? 'http://127.0.0.1:3000';
+let chaves: string[] = [];
+try {
+  const r = await fetch(`${API}/api/admin/secao/${SEC}`, { headers: { cookie: _ck } });
+  const j: any = await r.json().catch(() => null);
+  const base = j?.dados ?? j?.itens ?? j ?? {};
+  chaves = Array.isArray(base) ? Object.keys(base[0] ?? {}) : Object.keys(base ?? {});
+} catch {}
+// allowlist: a subrota precisa existir na resposta da secao, senao volta para o indice
+if (!chaves.includes(String(subroute))) return Astro.redirect(`/admin/${SEC}`, 302);
+---
+<Base titulo={`${SEC} / ${subroute}`}><AdminTabela secao={SEC} titulo={`${SEC} / ${subroute}`} />
+  <p class="releases-subtitle"><a href={`/admin/${SEC}`}>&larr; voltar para {SEC}</a></p>
+</Base>

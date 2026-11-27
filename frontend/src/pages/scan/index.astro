@@ -1,0 +1,22 @@
+---
+import Base from '../../layouts/Base.astro';
+---
+<Base title="Scans">
+  <div class="container spacer-bottom">
+    <section class="collection-header"><h1 class="collection-title">Scans</h1><p class="collection-sub">Grupos que produzem capítulos na plataforma.</p></section>
+    <div class="continue-grid" id="lista"></div>
+  </div>
+<script>
+  (async () => {
+    const r = await fetch('/api/scan');
+    const j = await r.json();
+    (document.getElementById('lista') as HTMLElement).innerHTML = (j.itens || []).map((s: any) => `
+      <article class="continue-card">
+        <div class="continue-top">${s.is_official ? '<span class="chip active">oficial</span>' : ''}<span class="chip">${s.status}</span></div>
+        <h2 class="edit-card-title"><a href="/scan/${s.slug}">${s.name}</a></h2>
+        <p class="edit-card-sub">${s.description || ''}</p>
+        <p class="edit-card-sub">${s.estagios || 0} estágios · ${s.capitulos || 0} capítulos em produção</p>
+      </article>`).join('');
+  })();
+</script>
+</Base>

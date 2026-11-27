@@ -1,0 +1,20 @@
+---
+// ReadingProgressBar: barra fixa no topo com o progresso de rolagem do capítulo.
+---
+<div class="reading-progress" aria-hidden="true"><div class="reading-progress-fill"></div></div>
+<style>
+  .reading-progress { position: fixed; top: 0; left: 0; right: 0; height: 3px; background: rgba(255,255,255,.08); z-index: 60; pointer-events: none; }
+  .reading-progress-fill { height: 100%; width: 0; background: linear-gradient(90deg, var(--purple), var(--gold)); transition: width .08s linear; }
+</style>
+<script>
+  const fill = document.querySelector<HTMLElement>('.reading-progress-fill');
+  const upd = () => {
+    if (!fill) return;
+    const h = document.documentElement;
+    const total = h.scrollHeight - h.clientHeight;
+    fill.style.width = (total > 0 ? (h.scrollTop / total) * 100 : 0).toFixed(2) + '%';
+  };
+  addEventListener('scroll', upd, { passive: true });
+  addEventListener('resize', upd);
+  upd();
+</script>

@@ -1,0 +1,32 @@
+---
+interface Props { pagina: number; totalPaginas: number; base: string; query?: Record<string, string | undefined> }
+const { pagina, totalPaginas, base, query = {} } = Astro.props;
+const link = (n: number) => {
+  const qs = new URLSearchParams();
+  for (const [k, v] of Object.entries(query)) if (v) qs.set(k, String(v));
+  if (n > 1) qs.set('page', String(n));
+  const s = qs.toString();
+  return s ? `${base}?${s}` : base;
+};
+const inicio = Math.max(1, Math.min(pagina - 2, totalPaginas - 4));
+const fim = Math.min(totalPaginas, inicio + 4);
+const numeros = Array.from({ length: Math.max(0, fim - inicio + 1) }, (_, i) => inicio + i);
+---
+<nav class="pg" aria-label="Paginação">
+  {pagina > 1 ? <a class="pg-btn" href={link(pagina - 1)} rel="prev">‹ Anterior</a> : <span class="pg-off">‹ Anterior</span>}
+  <ul class="pg-list">
+    {numeros.map((n) => (
+      <li>
+        {n === pagina ? <span class="pg-cur" aria-current="page">{n}</span> : <a class="pg-n" href={link(n)}>{n}</a>}
+      </li>
+    ))}
+  </ul>
+  {pagina < totalPaginas ? <a class="pg-btn" href={link(pagina + 1)} rel="next">Próxima ›</a> : <span class="pg-off">Próxima ›</span>}
+</nav>
+<style>
+  .pg { display: flex; align-items: center; justify-content: center; gap: .5rem; margin: 1.4rem 0; flex-wrap: wrap; }
+  .pg-list { display: flex; gap: .3rem; list-style: none; margin: 0; padding: 0; }
+  .pg-btn, .pg-n, .pg-cur, .pg-off { display: inline-grid; place-items: center; min-width: 38px; height: 38px; padding: 0 .6rem; border-radius: 10px; border: 1px solid var(--line); font-size: .87rem; }
+  .pg-cur { background: var(--purple); color: #0b0c13; font-weight: 700; border-color: var(--purple); }
+  .pg-off { color: var(--muted); opacity: .5; }
+</style>

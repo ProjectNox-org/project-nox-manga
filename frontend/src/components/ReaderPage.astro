@@ -1,0 +1,16 @@
+---
+const { pagina, indice = 0 } = Astro.props;
+const prioridade = indice < 2 ? 'high' : 'auto';
+const carregamento = indice < 2 ? 'eager' : 'lazy';
+---
+<figure class="reader-page">
+  <img
+    src={`/midia/${pagina.media_id}`}
+    alt={`Página ${pagina.position ?? indice + 1}`}
+    width={pagina.width ?? undefined}
+    height={pagina.height ?? undefined}
+    loading={carregamento}
+    fetchpriority={prioridade}
+    decoding="async"
+  />
+</figure>

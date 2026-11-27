@@ -1,0 +1,91 @@
+---
+import { cover, fmtViews, kindLabel, type Obra } from "../lib/api";
+interface Props { obras: Obra[]; }
+const { obras } = Astro.props;
+const slides = obras.slice(0, 5);
+---
+<section class="hero-carousel" data-hero>
+  {slides[0] && (
+    <div class="backdrop-wrapper">
+      <img class="backdrop-img" src={cover(slides[0].cover_id)} alt="" />
+      <div class="backdrop-radial-glow"></div>
+    </div>
+  )}
+  <div class="hero-container">
+  <div class="hero-stage">
+    <div class="deck" data-deck>
+      {slides.map((o, i) => (
+        <a class="deck-card" data-i={i} href={`/obra/${o.slug}`}>
+          <div class="active-card-inner">
+            <img class="cover-img" src={cover(o.cover_id)} alt={o.title} width="300" height="430" />
+            <div class="cover-gloss"></div>
+            <div class="cover-glare"></div>
+            <div class="cover-edge-accent"></div>
+            {typeof o.views_total === "number" && <span class="cover-views-badge">{fmtViews(o.views_total)}</span>}
+          </div>
+        </a>
+      ))}
+    </div>
+    <div class="hero-info-col">
+      {slides.map((o, i) => (
+        <div class="hero-info" data-info={i}>
+          <div class="badges-row">
+            <span class="badge-destaque">Destaque</span>
+            {o.kind && <span class="badge-kind">{kindLabel(o.kind)}</span>}
+            {o.status && <span class="badge-status">{o.status}</span>}
+            {o.year && <span class="badge-year">{o.year}</span>}
+          </div>
+          <h1 class="hero-title">{o.title}</h1>
+          <p class="hero-synopsis">{(o.synopsis || "").slice(0, 220)}</p>
+          <div class="hero-actions">
+            <a class="btn-primary-hero" href={`/obra/${o.slug}`}>Ler agora</a>
+            <a class="btn-secondary-hero" href={`/obra/${o.slug}`}>Ver detalhes</a>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+  <div class="carousel-cinematic-bar">
+    <div class="progress-track"><div class="progress-fill" data-fill></div></div>
+    <div class="slider-nav-arrows">
+      <button class="slider-arrow" data-nav="-1" aria-label="anterior">&#8249;</button>
+      <button class="slider-arrow" data-nav="1" aria-label="próximo">&#8250;</button>
+    </div>
+  </div>
+  </div>
+</section>
+<script>
+  const hero = document.querySelector("[data-hero]") as HTMLElement | null;
+  if (hero) {
+    const cards = Array.from(hero.querySelectorAll<HTMLElement>(".deck-card"));
+    const infos = Array.from(hero.querySelectorAll<HTMLElement>("[data-info]"));
+    const fill = hero.querySelector("[data-fill]") as HTMLElement | null;
+    const bg = hero.querySelector(".backdrop-img") as HTMLImageElement | null;
+    let cur = 0;
+    const total = cards.length || 1;
+    const paint = () => {
+      cards.forEach((c, i) => {
+        const d = (i - cur + total) % total;
+        c.classList.toggle("deck-active", d === 0);
+        c.classList.toggle("deck-next", d === 1 || (total === 2 && d === 1));
+        c.classList.toggle("deck-prev", d === total - 1 && total > 2);
+      });
+      infos.forEach((el, i) => (el.style.display = i === cur ? "" : "none"));
+      if (fill) fill.style.width = ((cur + 1) / total) * 100 + "%";
+      const img = cards[cur]?.querySelector(".cover-img") as HTMLImageElement | null;
+      if (bg && img) bg.src = img.src;
+    };
+    const go = (d: number) => { cur = (cur + d + total) % total; paint(); };
+    hero.querySelectorAll<HTMLElement>("[data-nav]").forEach((b) =>
+      b.addEventListener("click", () => go(Number(b.dataset.nav || 1)))
+    );
+    let timer = setInterval(() => go(1), 6000);
+    hero.addEventListener("mouseenter", () => clearInterval(timer));
+    hero.addEventListener("mouseleave", () => (timer = setInterval(() => go(1), 6000)));
+    paint();
+  }
+</script>
+<style is:global>
+  .hero-carousel .carousel-cinematic-bar{ height:60px; }
+  .hero-carousel .hero-stage{ margin-bottom:0; }
+</style>

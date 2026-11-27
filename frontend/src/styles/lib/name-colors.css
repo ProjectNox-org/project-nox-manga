@@ -1,0 +1,166 @@
+/**
+ * src/lib/name-colors.css
+ * Curated, elegant animations and visual styles for Project Nox Name Colors.
+ * 
+ * Variety of visual styles:
+ * - Static Luxury & Solid Nobles (No animation, high-contrast, crisp typography)
+ * - Smooth Sliding Gradient Waves (nox-anim-grad-flow)
+ * - Metallic Shimmer Beam (nox-anim-shimmer)
+ * - Holographic Iridescent Shift (nox-anim-hologram)
+ * - Localized Traveling Glint (nox-anim-glint)
+ * - Diagonal Angular Drift (nox-anim-grad-shift)
+ * 
+ * ZERO rapid blinking, ZERO harsh strobe.
+ * Full prefers-reduced-motion support.
+ */
+
+/* =========================================================================
+   KEYFRAME DEFINITIONS (Fluid, GPU-accelerated, non-strobe)
+   ========================================================================= */
+
+/* 1. Smooth Horizontal Gradient Flow (Water / Nebula wave) */
+@keyframes noxKeyframeGradFlow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* 2. Diagonal Angular Drift (Smooth 45deg transition) */
+@keyframes noxKeyframeGradShift {
+  0% {
+    background-position: 0% 0%;
+  }
+  50% {
+    background-position: 100% 100%;
+  }
+  100% {
+    background-position: 0% 0%;
+  }
+}
+
+/* 3. Metallic Light Reflection / Shimmer Sweep */
+@keyframes noxKeyframeShimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* 4. Pearlescent Hologram Iridescence */
+@keyframes noxKeyframeHologram {
+  0% {
+    background-position: 0% 50%;
+    filter: hue-rotate(0deg);
+  }
+  50% {
+    background-position: 100% 50%;
+    filter: hue-rotate(30deg);
+  }
+  100% {
+    background-position: 0% 50%;
+    filter: hue-rotate(0deg);
+  }
+}
+
+/* 5. Localized Traveling Glint / Star Streak */
+@keyframes noxKeyframeGlint {
+  0% {
+    background-position: -150% 0;
+  }
+  100% {
+    background-position: 250% 0;
+  }
+}
+
+/* =========================================================================
+   STYLE CLASSES
+   ========================================================================= */
+
+/* Static Luxury Colors & Gradients (Zero motion) */
+.nox-color-static {
+  display: inline-block;
+  font-weight: 700;
+  animation: none !important;
+  transform: none !important;
+}
+
+/* Smooth Gradient Flow Wave */
+.nox-anim-grad-flow {
+  display: inline-block;
+  background-size: 250% 250% !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
+  animation: noxKeyframeGradFlow 4.2s ease-in-out infinite !important;
+  font-weight: 700;
+}
+
+/* Metallic Shimmer Reflection */
+.nox-anim-shimmer {
+  display: inline-block;
+  background-size: 220% auto !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
+  animation: noxKeyframeShimmer 3.2s ease-in-out infinite !important;
+  font-weight: 700;
+}
+
+/* Holographic Pearlescent Wave */
+.nox-anim-hologram {
+  display: inline-block;
+  background-size: 250% 250% !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
+  animation: noxKeyframeHologram 5s ease-in-out infinite !important;
+  font-weight: 700;
+}
+
+/* Localized Glint / Star Streak */
+.nox-anim-glint {
+  display: inline-block;
+  background-size: 200% auto !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
+  animation: noxKeyframeGlint 3.6s ease-in-out infinite !important;
+  font-weight: 700;
+}
+
+/* Diagonal Angular Drift */
+.nox-anim-grad-shift {
+  display: inline-block;
+  background-size: 300% 300% !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
+  animation: noxKeyframeGradShift 5s linear infinite !important;
+  font-weight: 700;
+}
+
+/* Accessibility: respects prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .nox-anim-grad-flow,
+  .nox-anim-shimmer,
+  .nox-anim-hologram,
+  .nox-anim-glint,
+  .nox-anim-grad-shift {
+    animation: none !important;
+    transform: none !important;
+    filter: none !important;
+  }
+}

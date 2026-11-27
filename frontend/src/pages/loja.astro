@@ -1,0 +1,59 @@
+---
+import Base from '../layouts/Base.astro';
+---
+<Base title="Loja">
+  <div class="container spacer-bottom">
+    <section class="collection-header">
+      <h1 class="collection-title">Loja</h1>
+      <p class="collection-sub" id="saldo">Carregando…</p>
+    </section>
+    <div class="chips" id="categorias"></div>
+    <div class="badges-scroll-grid" id="itens"></div>
+  </div>
+<script>
+  const api = '';
+  let dados: any = { itens: [] };
+  const nomes: Record<string,string> = { TITLE:'Títulos', BADGE:'Emblemas', PROFILE_BANNER:'Banners', BANNER:'Banners', COMMENT_BANNER:'Banners de comentário', MEDAL:'Medalhas', AVATAR_FRAME:'Molduras' };
+  function render(cat = '') {
+    const alvo = document.getElementById('itens') as HTMLElement;
+    const vis = dados.itens.filter((i: any) => !cat || i.kind === cat);
+    alvo.innerHTML = vis.map((i: any) => `
+      <article class="badge-tile">
+        <header class="badge-tile-header"><span class="badge-tile-tier">${nomes[i.kind] || i.kind}</span>${i.rarity ? `<span class="badge-tag">${i.rarity}</span>` : ''}</header>
+        <h3 class="badge-tile-name">${i.name}</h3>
+        <p class="badge-tile-desc">${i.description || ''}</p>
+        <div class="badge-tile-meta"><span>${i.price_xp} XP</span>${i.min_level > 1 ? `<span>nível ${i.min_level}+</span>` : ''}</div>
+        <div class="form-actions">${i.possui
+          ? `<button class="btn-tile-equip" data-equipar="${i.id}">Equipar</button>`
+          : `<button class="btn-title-equip" data-comprar="${i.id}">Comprar</button>`}</div>
+      </article>`).join('');
+    alvo.querySelectorAll('[data-comprar]').forEach((b) => b.addEventListener('click', async (ev) => {
+      const id = (ev.currentTarget as HTMLElement).dataset.comprar;
+      const r = await fetch(api + '/api/loja/comprar', { method:'POST', credentials:'include', headers:{'content-type':'application/json'}, body: JSON.stringify({ item_id: id }) });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok) { document.getElementById('saldo')!.textContent = `Saldo: ${j.xp_restante ?? j.xp_apos} XP`; carregar(); }
+      else alert(j.erro || 'Não foi possível comprar.');
+    }));
+    alvo.querySelectorAll('[data-equipar]').forEach((b) => b.addEventListener('click', async (ev) => {
+      const id = (ev.currentTarget as HTMLElement).dataset.equipar;
+      await fetch(api + '/api/loja/equipar', { method:'POST', credentials:'include', headers:{'content-type':'application/json'}, body: JSON.stringify({ item_id: id }) });
+      alert('Item equipado.');
+    }));
+  }
+  async function carregar() {
+    const r = await fetch(api + '/api/loja', { credentials: 'include' });
+    if (r.status === 401) { location.href = '/entrar'; return; }
+    dados = await r.json();
+    (document.getElementById('saldo') as HTMLElement).textContent = `Saldo: ${dados.xp} XP · nível ${dados.nivel}`;
+    const cats = [...new Set(dados.itens.map((i: any) => i.kind))] as string[];
+    (document.getElementById('categorias') as HTMLElement).innerHTML =
+      `<button class="chip active" data-cat="">Todos</button>` + cats.map((c) => `<button class="chip" data-cat="${c}">${nomes[c] || c}</button>`).join('');
+    document.querySelectorAll('#categorias .chip').forEach((c) => c.addEventListener('click', () => {
+      document.querySelectorAll('#categorias .chip').forEach((x) => x.classList.remove('active'));
+      (c as HTMLElement).classList.add('active'); render((c as HTMLElement).dataset.cat as string);
+    }));
+    render();
+  }
+  carregar();
+</script>
+</Base>

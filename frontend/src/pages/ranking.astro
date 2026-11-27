@@ -1,0 +1,36 @@
+---
+import Base from '../layouts/Base.astro';
+---
+<Base title="Ranking">
+  <div class="container spacer-bottom">
+    <section class="collection-header">
+      <h1 class="collection-title">Ranking</h1>
+      <p class="collection-sub">Os leitores mais ativos da plataforma.</p>
+    </section>
+    <div class="chips" id="abas">
+      <button class="chip active" data-tipo="xp">Por XP</button>
+      <button class="chip" data-tipo="capitulos">Por capítulos</button>
+    </div>
+    <div class="badges-scroll-grid" id="lista"></div>
+  </div>
+<script>
+  const api = '';
+  const lista = document.getElementById('lista') as HTMLElement;
+  async function carregar(tipo: string) {
+    const r = await fetch(`${api}/api/ranking?tipo=${tipo}&limit=50`, { credentials: 'include' });
+    const j = await r.json();
+    lista.innerHTML = (j.itens || []).map((i: any) => `
+      <article class="badge-tile">
+        <header class="badge-tile-header"><span class="badge-tile-icon">#${i.posicao}</span><span class="badge-tile-tier">nível ${i.nivel}</span></header>
+        <h3 class="badge-tile-name"><a href="/u/${i.username}" style="color:${i.name_color || 'inherit'}">${i.display_name || i.username}</a></h3>
+        <p class="badge-tile-desc">${i.xp} XP · ${i.capitulos_lidos || 0} capítulos</p>
+      </article>`).join('');
+  }
+  document.querySelectorAll('#abas .chip').forEach((c) => c.addEventListener('click', () => {
+    document.querySelectorAll('#abas .chip').forEach((x) => x.classList.remove('active'));
+    (c as HTMLElement).classList.add('active');
+    carregar((c as HTMLElement).dataset.tipo as string);
+  }));
+  carregar('xp');
+</script>
+</Base>

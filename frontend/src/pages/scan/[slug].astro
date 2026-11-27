@@ -1,0 +1,25 @@
+---
+import Base from '../../layouts/Base.astro';
+const { slug } = Astro.params;
+---
+<Base title={`Scan ${slug}`}>
+  <div class="container spacer-bottom">
+    <section class="collection-header"><p class="eyebrow"><a href="/scan">← scans</a></p><h1 class="collection-title" id="nome">${slug}</h1><p class="collection-sub" id="desc"></p></section>
+    <div class="chips" id="estagios"></div>
+    <div class="continue-grid" id="caps"></div>
+  </div>
+<script define:vars={{ slug }}>
+  const api = '';
+  (async () => {
+    const r = await fetch(`${api}/api/scan/${encodeURIComponent(slug)}`);
+    if (!r.ok) { document.getElementById('desc')!.textContent = 'Scan não encontrada.'; return; }
+    const j = await r.json();
+    document.getElementById('nome')!.textContent = j.name || slug;
+    document.getElementById('desc')!.textContent = j.description || '';
+    document.getElementById('estagios')!.innerHTML = (j.estagios || []).map((e: any) => `<span class="chip" style="border-color:${e.color || 'transparent'}">${e.name}</span>`).join('');
+    document.getElementById('caps')!.innerHTML = (j.capitulos || []).map((c: any) => `
+      <article class="continue-card"><h3 class="edit-card-title">cap. ${c.chapter_number}${c.chapter_title ? ` — ${c.chapter_title}` : ''}</h3>
+      <p class="edit-card-sub">${c.obra_titulo || 'obra'} · ${c.status} · estágio ${c.current_stage_slug}</p></article>`).join('');
+  })();
+</script>
+</Base>

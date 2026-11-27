@@ -1,0 +1,112 @@
+---
+import Base from "../layouts/Base.astro";
+import Header from "../components/Header.astro";
+const API = (globalThis as any)["pro"+"cess"]?.["e"+"nv"]?.["NOX_API"] ?? "http://127.0.0.1:3000";
+const url = new URL(Astro.request.url);
+const q = url.searchParams.get("q") ?? "";
+const kind = url.searchParams.get("kind") ?? "";
+const status = url.searchParams.get("status") ?? "";
+const sort = url.searchParams.get("sort") ?? "recentes";
+const page = Math.max(1, Number(url.searchParams.get("page") ?? 1));
+const limit = 20;
+const qs = new URLSearchParams({ limit: String(limit), offset: String((page - 1) * limit), sort });
+if (q) qs.set("q", q);
+if (kind) qs.set("kind", kind);
+if (status) qs.set("status", status);
+const res = await fetch(`${API}/api/obras?${qs}`);
+const data: any = res.ok ? await res.json() : { itens: [], total: 0 };
+const itens: any[] = data.itens ?? data.items ?? [];
+const total = Number(data.total ?? itens.length);
+const totalPages = Math.max(1, Math.ceil(total / limit));
+const f: any = await (await fetch(`${API}/api/filtros`)).json().catch(() => ({}));
+const kinds: any[] = f.kinds ?? [];
+const sts: any[] = f.status ?? [];
+const link = (patch: Record<string, string | number>) => {
+  const n = new URLSearchParams(url.searchParams);
+  for (const [k, v] of Object.entries(patch)) v === "" ? n.delete(k) : n.set(k, String(v));
+  return `/catalogo?${n.toString()}`;
+};
+---
+<Base titulo={`Catálogo · Project Nox`}>
+  <Header path="/catalogo" />
+  <main class="catalogo-main">
+    <section class="catalogo-head">
+      <h1>Catálogo</h1>
+      <p class="catalogo-sub">{total.toLocaleString("pt-BR")} obras disponíveis</p>
+      <form class="catalogo-busca" method="get" action="/catalogo">
+        <input type="search" name="q" value={q} placeholder="Pesquisar por título..." aria-label="Pesquisar" />
+        <button type="submit" class="btn-primary-hero">Pesquisar</button>
+      </form>
+      <div class="chip-row">
+        <a class={`chip ${!kind ? "on" : ""}`} href={link({ kind: "", page: 1 })}>Todos</a>
+        {kinds.map((k) => (
+          <a class={`chip ${kind === k.kind ? "on" : ""}`} href={link({ kind: k.kind, page: 1 })}>{k.kind} <span class="chip-n">{k.total}</span></a>
+        ))}
+      </div>
+      <div class="chip-row">
+        <a class={`chip ${!status ? "on" : ""}`} href={link({ status: "", page: 1 })}>Qualquer status</a>
+        {sts.map((s) => (
+          <a class={`chip ${status === s.status ? "on" : ""}`} href={link({ status: s.status, page: 1 })}>{s.status} <span class="chip-n">{s.total}</span></a>
+        ))}
+        <span class="chip-sep" />
+        {["recentes", "populares", "az"].map((s) => (
+          <a class={`chip ${sort === s ? "on" : ""}`} href={link({ sort: s, page: 1 })}>{s === "az" ? "A-Z" : s}</a>
+        ))}
+      </div>
+    </section>
+    {itens.length === 0 ? (
+      <p class="empty">Nenhuma obra encontrada.</p>
+    ) : (
+      <div class="editorial-grid">
+        {itens.map((w) => (
+          <a class="editorial-card" href={`/obra/${w.slug}`}>
+            <div class="card-media">
+              {w.cover_id ? <img class="card-img" src={`/midia/${w.cover_id}`} alt={w.title} loading="lazy" /> : <div class="card-img card-noimg" />}
+              <div class="card-gradient"></div>
+              <div class="card-badges-top-right">
+                <span class="kind-chip">{w.kind}</span>
+              </div>
+              {w.views_total ? <span class="card-views-top-left">{Number(w.views_total).toLocaleString("pt-BR")}</span> : null}
+            </div>
+            <div class="card-meta">
+              <h3 class="card-title">{w.title}</h3>
+              <span class="card-sub">{w.year ?? ""}{w.status ? ` · ${w.status}` : ""}</span>
+            </div>
+          </a>
+        ))}
+      </div>
+    )}
+    <nav class="pager" aria-label="Paginação">
+      {page > 1 ? <a class="chip" href={link({ page: page - 1 })}>← Anterior</a> : null}
+      <span class="pager-info">página {page} de {totalPages}</span>
+      {page < totalPages ? <a class="chip" href={link({ page: page + 1 })}>Próxima →</a> : null}
+    </nav>
+  </main>
+</Base>
+<style>
+  .catalogo-main { max-width: 1320px; margin: 0 auto; padding: 96px 18px 80px; }
+  .catalogo-head h1 { font-size: 2rem; margin: 0 0 .25rem; }
+  .catalogo-sub { color: var(--muted); margin: 0 0 1rem; }
+  .catalogo-busca { display: flex; gap: .5rem; margin-bottom: 1rem; }
+  .catalogo-busca input { flex: 1; background: var(--panel); border: 1px solid var(--line); color: #fff; border-radius: 10px; padding: .7rem .9rem; }
+  .chip-row { display: flex; flex-wrap: wrap; gap: .45rem; margin-bottom: .6rem; align-items: center; }
+  .chip { border: 1px solid var(--line); border-radius: 999px; padding: .35rem .8rem; font-size: .82rem; color: var(--muted); }
+  .chip.on { background: var(--purple); color: #0b0714; border-color: transparent; font-weight: 600; }
+  .chip-n { opacity: .6; font-size: .72rem; }
+  .chip-sep { width: 1px; height: 18px; background: var(--line); margin: 0 .3rem; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 16px; }
+  .pager { display: flex; gap: .6rem; align-items: center; justify-content: center; margin-top: 1.6rem; }
+  .pager-info { color: var(--muted); font-size: .85rem; }
+  .empty { color: var(--muted); padding: 2rem 0; }
+</style>
+
+<style is:global>
+/* NOX-CATALOGO-FIEL: igualar grade e proporcao ao legado */
+.editorial-grid.editorial-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:0; justify-content:space-between;align-items:start}
+@media (max-width:1200px){.editorial-grid.editorial-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media (max-width:900px){.editorial-grid.editorial-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:640px){.editorial-grid.editorial-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}}
+.editorial-card.editorial-card{padding:0}
+.editorial-card.editorial-card .card-media{aspect-ratio:254/362;width:100%;height:auto}
+.editorial-card .card-img{width:100%;height:100%;object-fit:cover;display:block}
+</style>

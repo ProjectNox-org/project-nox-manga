@@ -1,0 +1,60 @@
+---
+import { cover, fmtViews, kindLabel, type Obra } from "../lib/api";
+interface Props { titulo: string; subtitulo?: string; obras: Obra[]; verTudo?: string; }
+const { titulo, subtitulo, obras, verTudo = "/catalogo" } = Astro.props;
+---
+<section class="shelf-section" data-shelf>
+  <div class="shelf-header">
+    <div class="title-cluster">
+      <h2 class="shelf-title"><span class="title-accent-bar"></span>{titulo}</h2>
+      {subtitulo && <p class="shelf-subtitle">{subtitulo}</p>}
+    </div>
+    <div class="shelf-actions">
+      <a class="expand-inline-btn" href={verTudo}>ver tudo</a>
+      <button class="shelf-arrow" data-dir="-1" aria-label="anterior">&#8249;</button>
+      <button class="shelf-arrow" data-dir="1" aria-label="próximo">&#8250;</button>
+    </div>
+  </div>
+  <div class="shelf-scroll-container">
+    <div class="shelf-track">
+      {obras.map((o) => (
+        <a class="shelf-card" href={`/obra/${o.slug}`}>
+          <div class="card-cover-box">
+            <img class="card-img" src={cover(o.cover_id)} alt={o.title} loading="lazy" width="160" height="230" />
+            <div class="card-glow"></div>
+            {o.kind && <span class="card-kind-badge">{kindLabel(o.kind)}</span>}
+            {typeof o.views_total === "number" && <span class="card-views-badge">{fmtViews(o.views_total)}</span>}
+          </div>
+          <div class="card-info">
+            <h3 class="card-work-title">{o.title}</h3>
+            <span class="card-status">{o.status ?? ""}{o.year ? ` · ${o.year}` : ""}</span>
+          </div>
+        </a>
+      ))}
+    </div>
+  </div>
+</section>
+<script>
+  document.querySelectorAll("[data-shelf]").forEach((sec) => {
+    const track = sec.querySelector(".shelf-track") as HTMLElement | null;
+    sec.querySelectorAll<HTMLButtonElement>(".shelf-arrow").forEach((b) => {
+      b.addEventListener("click", () => {
+        const dir = Number(b.dataset.dir || 1);
+        track?.scrollBy({ left: dir * (track.clientWidth * 0.8), behavior: "smooth" });
+      });
+    });
+  });
+</script>
+<style is:global>
+  .shelf-card .card-status{ display:none; }
+  .shelf-card .card-info{ gap:0; }
+  .shelf-card .card-work-title{ margin:0; line-height:1.42; }
+  .shelf-section{ padding-bottom:0; }
+  .shelf-header{ margin-bottom:0; }
+</style>
+
+<style is:global>
+  .shelf-section.shelf-section{ padding-bottom:0; }
+  .home-content .shelf-section{ padding-bottom:0; }
+  .shelf-header.shelf-header{ margin-bottom:0; }
+</style>

@@ -1,0 +1,56 @@
+---
+import Base from '../layouts/Base.astro';
+const _ck = Astro.request.headers.get('cookie') || '';
+if (!/(?:^|;\s*)nox-auth-token=/.test(_ck)) return Astro.redirect('/entrar', 302);
+---
+<Base title="Notificações">
+  <div class="container spacer-bottom">
+    <section class="collection-header">
+      <h1 class="collection-title">Notificações</h1>
+      <div class="form-actions">
+        <button class="btn-mark-all" id="marcar-todas">Marcar todas como lidas</button>
+      </div>
+    </section>
+    <div id="lista-notif"></div>
+    <div class="empty-notif-box" id="vazio-notif" hidden>
+      <div class="empty-glow"></div>
+      <div class="empty-icon-wrap">✓</div>
+      <h2 class="empty-title">Tudo em dia</h2>
+      <p class="empty-description">Você não tem notificações pendentes.</p>
+      <div class="empty-actions"><a class="btn-empty-action secondary" href="/catalogo">Voltar ao catálogo</a></div>
+    </div>
+  </div>
+
+<script>
+  const api = '';
+  const lista = document.getElementById('lista-notif') as HTMLElement;
+  const vazio = document.getElementById('vazio-notif') as HTMLElement;
+  async function carregar() {
+    const r = await fetch(`${api}/api/notificacoes?limit=50`, { credentials: 'include' });
+    if (r.status === 401) { location.href = '/entrar'; return; }
+    const j = await r.json();
+    const itens = j.itens || [];
+    vazio.hidden = itens.length > 0;
+    lista.innerHTML = itens.map((n: any) => `
+      <article class="continue-card" data-id="${n.id}">
+        <div class="continue-top"><span class="context-pill">${n.kind || 'aviso'}</span>${n.read_at ? '' : '<span class="chip active">nova</span>'}</div>
+        <h3 class="edit-card-title">${n.title || 'Notificação'}</h3>
+        <p class="edit-card-sub">${n.body || ''}</p>
+        <div class="form-actions">
+          ${n.href ? `<a class="button secondary compact" href="${n.href}">Abrir</a>` : ''}
+          ${n.read_at ? '' : `<button class="btn-mark-single" data-ler="${n.id}">Marcar como lida</button>`}
+        </div>
+      </article>`).join('');
+    lista.querySelectorAll('[data-ler]').forEach((b) => b.addEventListener('click', async (ev) => {
+      const id = (ev.currentTarget as HTMLElement).dataset.ler;
+      await fetch(`${api}/api/notificacoes/${id}/lida`, { method: 'POST', credentials: 'include' });
+      carregar();
+    }));
+  }
+  document.getElementById('marcar-todas')?.addEventListener('click', async () => {
+    await fetch(`${api}/api/notificacoes/lidas`, { method: 'POST', credentials: 'include' });
+    carregar();
+  });
+  carregar();
+</script>
+</Base>

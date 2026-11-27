@@ -1,0 +1,18 @@
+---
+import Base from '../../layouts/Base.astro';
+const API = import.meta.env.NOX_API ?? 'http://127.0.0.1:3000';
+const { slug } = Astro.params;
+let scan:any=null, est:any[]=[], caps:any[]=[];
+try{ const r=await fetch(`${API}/api/scan/${encodeURIComponent(slug??'')}`); if(r.ok){const j=await r.json(); scan=j.scan; est=j.estagios??[]; caps=j.capitulos??[];} }catch{}
+---
+<Base titulo={`${scan?.name ?? 'Scan'} — Project Nox`}>
+<section class="collection-header"><a class="chip" href="/scans">← scans</a>
+<h1 class="releases-title">{scan?.name ?? 'Scan não encontrada'}</h1>
+{scan?.description && <p class="releases-subtitle">{scan.description}</p>}</section>
+<div class="shelf-actions">{est.map((e:any)=>(<span class="kind-chip" style={`border-color:${e.color||'var(--line)'}`}>{e.display_order}. {e.name}</span>))}</div>
+<section class="releases-section"><h2 class="releases-title">Em produção</h2>
+<div class="releases-grid">{caps.map((c:any)=>(<div class="release-row-card"><div class="release-main">
+<strong>{c.obra_titulo ?? 'Obra'} — cap. {c.chapter_number}</strong>
+<span class="card-sub">{c.status} · {c.current_stage_slug ?? '—'}</span></div></div>))}
+{caps.length===0 && <div class="empty-releases">Nenhum capítulo em produção.</div>}</div></section>
+</Base>

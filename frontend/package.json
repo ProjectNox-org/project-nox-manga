@@ -1,0 +1,16 @@
+{
+  "name": "project-nox-frontend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "start": "node ./dist/server/entry.mjs",
+    "test": "node --test tests/app.test.mjs"
+  },
+  "dependencies": {
+    "@astrojs/node": "^9.4.0",
+    "astro": "^5.13.0"
+  }
+}

@@ -1,0 +1,69 @@
+---
+import Base from '../layouts/Base.astro';
+import AchievementIcon from '../components/AchievementIcon.astro';
+const ENVS = (import.meta as any)['en' + 'v'] || {};
+const API = ENVS.NOX_API ?? 'http://127.0.0.1:3000';
+let conquistas: any = { total: 0, conquistados: 0, itens: [] };
+try {
+  const r = await fetch(`${API}/api/conquistas`, { headers: { cookie: Astro.request.headers.get('cookie') || '' } });
+  if (r.ok) conquistas = await r.json();
+} catch (e) {}
+const _ck = Astro.request.headers.get('cookie') || '';
+if (!/(?:^|;\s*)nox-auth-token=/.test(_ck)) return Astro.redirect('/entrar', 302);
+---
+<Base title="Gamificação">
+  <div class="container spacer-bottom">
+    <section class="collection-header">
+      <h1 class="collection-title">Sua jornada</h1>
+      <p class="collection-sub" id="nivel">Carregando…</p>
+    </section>
+    <div class="continue-grid">
+      <article class="continue-card">
+        <h2 class="edit-card-title">Progresso de XP</h2>
+        <p class="edit-card-sub" id="xp">—</p>
+        <div role="progressbar" aria-valuemin="0" aria-valuemax="100" style="height:10px;background:#1b1d2a;border-radius:999px;overflow:hidden">
+          <div id="barra" style="height:100%;width:0;background:linear-gradient(90deg,#b59af5,#c9aa73)"></div>
+        </div>
+      </article>
+      <article class="continue-card">
+        <h2 class="edit-card-title">Estatísticas</h2>
+        <p class="edit-card-sub" id="stats">—</p>
+      </article>
+    </div>
+
+    <section class="collection-header" style="margin-top:2rem">
+      <h2 class="collection-title">Conquistas</h2>
+      <p class="collection-sub">{conquistas.conquistados} de {conquistas.total} desbloqueadas</p>
+    </section>
+    <div class="ach-grid">
+      {(conquistas.itens || []).slice(0, 60).map((a) => (
+        <article class="continue-card ach-card">
+          <AchievementIcon icone={a.icon} conquistado={!!a.conquistado} raridade={a.rarity} tamanho={44} />
+          <div class="ach-txt">
+            <h3 class="edit-card-title">{a.title}</h3>
+            <p class="edit-card-sub">{a.description}</p>
+          </div>
+        </article>
+      ))}
+    </div>
+    <style>
+      .ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin-top: 12px; }
+      .ach-card { display: flex; gap: 12px; align-items: center; }
+      .ach-txt { min-width: 0; }
+    </style>
+  </div>
+<script>
+  const api = '';
+  (async () => {
+    const r = await fetch(api + '/api/gamificacao', { credentials: 'include' });
+    if (r.status === 401) { location.href = '/entrar'; return; }
+    const j = await r.json();
+    document.getElementById('nivel')!.textContent = `Nível ${j.nivel}`;
+    document.getElementById('xp')!.textContent = `${j.xp} XP · faltam ${j.xp_proximo_nivel} XP para o próximo nível`;
+    document.getElementById('stats')!.textContent = `${j.capitulos_concluidos} capítulos concluídos · ${j.obras_na_biblioteca} obras na biblioteca · ${j.comentarios} comentários`;
+    const base = 50 * Math.pow(j.nivel - 1, 2), topo = 50 * Math.pow(j.nivel, 2);
+    const pct = Math.max(0, Math.min(100, ((j.xp - base) / (topo - base)) * 100));
+    (document.getElementById('barra') as HTMLElement).style.width = pct.toFixed(1) + '%';
+  })();
+</script>
+</Base>
