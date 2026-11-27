@@ -31,3 +31,11 @@ cd ~/.local/share/opencode/nox-workspace/laboratorios/nox-manga
 git switch feat/astro-frontend && git log --oneline -3
 cd frontend && npm run build
 ```
+
+## Auditoria funcional e de estabilidade (2026-11-27, sessão direta)
+
+- Varredura autenticada no staging (`127.0.0.1:4331`, Playwright): `/perfil` avatar-frame 1, `/gamificacao` 60 conquistas renderizadas, `/loja` 41 itens, `/ranking` 14 linhas, `/obra/new-game` 25 capítulos + 5 estrelas + comentários, `/ler/<id>` 21 imagens, home 5 slides + 48 shelf-cards + 12 lançamentos. Sem `pageerror` e sem 5xx de página.
+- Falso negativo esclarecido: `/loja` e `/gamificacao` são vazios em `curl` porque `/gamificacao` redireciona anônimo (302) e `/loja` monta os itens via JS — no navegador renderizam 41 e 60 elementos.
+- Bug real de produção corrigido na API (VPS): `nox-api` caiu com `TypeError: fetch failed [cause]: read ECONNRESET` vindo de chamada externa (Telegram) como rejeição não tratada. Adicionados `process.on('unhandledRejection')` e `process.on('uncaughtException')` em `/srv/project-nox/releases/api-01/server.js` (backup `.bak-resil`), `node --check` OK, serviço `active`. Antes: `NRestarts=1`; depois do patch, 20 requisições sequenciais e 12 paralelas ao proxy `/api` = 100% 200.
+- Proxy `/api` do Astro validado sob carga: 20 sequenciais e 12 paralelas, todas 200.
+- Terceira resolução medida (1920×1080): home 2779 · catálogo 2723 · obra 3691 · leitor 29372 · entrar 1255.
