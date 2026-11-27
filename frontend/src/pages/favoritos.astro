@@ -1,0 +1,43 @@
+---
+import Base from '../layouts/Base.astro';
+const api = 'http://127.0.0.1:3000';
+const cookie = Astro.request.headers.get('cookie') || '';
+if (!cookie.includes('nox-auth-token')) return Astro.redirect('/entrar');
+let dados = { itens: [] };
+try {
+  const r = await fetch(api + '/api/biblioteca', { headers: { cookie } });
+  if (r.ok) dados = await r.json();
+} catch {}
+const itens = (dados.itens || []).filter((i) => i.favorite === true || i.favorito === true);
+---
+<Base titulo="Favoritos — Project Nox">
+  <section class="collection-header">
+    <h1>Favoritos</h1>
+    <p class="muted">{itens.length} obra{itens.length === 1 ? '' : 's'} marcada{itens.length === 1 ? '' : 's'}</p>
+  </section>
+  {itens.length === 0 ? (
+    <div class="empty-notif-box">Você ainda não favoritou nenhuma obra. <a href="/catalogo">Explorar catálogo</a></div>
+  ) : (
+    <div class="continue-grid">
+      {itens.map((i) => (
+        <article class="continue-card" data-slug={i.slug}>
+          <a href={`/obra/${i.slug}`} class="card-title">{i.titulo || i.title}</a>
+          <span class="card-sub">{[i.kind, i.status].filter(Boolean).join(' · ')}</span>
+          <button class="btn-collapse btn-desfav" data-slug={i.slug}>desfavoritar</button>
+        </article>
+      ))}
+    </div>
+  )}
+  <script is:inline>
+    document.querySelectorAll('.btn-desfav').forEach((b) => {
+      b.addEventListener('click', async () => {
+        const r = await fetch('http://127.0.0.1:3000/api/biblioteca', {
+          method: 'POST', credentials: 'include',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ slug: b.dataset.slug, acao: 'desfavoritar' }),
+        });
+        if (r.ok) b.closest('.continue-card')?.remove();
+      });
+    });
+  </script>
+</Base>
