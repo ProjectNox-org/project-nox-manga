@@ -8,7 +8,7 @@ import BatchChapterModal from "../../components/BatchChapterModal.astro";
 const { slug } = Astro.params;
 const API = "http://127.0.0.1:3000";
 let obra: any = null;
-try { const r = await fetch(`${API}/api/obras/${slug}`); if (r.ok) obra = (await r.json()).obra ?? await r.json(); } catch {}
+try { const r = await fetch(`${API}/api/obras/${slug}`); if (r.ok) { const j = await r.json(); obra = j.obra ?? j; } } catch {}
 if (!obra) return Astro.redirect("/catalogo", 302);
 const capitulos: any[] = obra.capitulos ?? [];
 const primeiro = capitulos.find((c: any) => c.published_at || c.published);
