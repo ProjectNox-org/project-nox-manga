@@ -1,16 +1,18 @@
 ---
 import Base from "../layouts/Base.astro";
-import ParticleBackground from "../components/ParticleBackground.astro";
 import HeroCarousel from "../components/HeroCarousel.astro";
 import WorkShelf from "../components/WorkShelf.astro";
+import RecentReleases from "../components/RecentReleases.astro";
 import { homeData } from "../lib/api";
-const { obras, recentes } = await homeData();
+const { obras, novasObras, recentes } = await homeData();
 ---
-<Base titulo="Project Nox">
-  <ParticleBackground />
-  <main class="home-main">
+<Base title="Project Nox">
+  <div class="home-wrapper">
     <HeroCarousel obras={obras.slice(0, 5)} />
-    <WorkShelf titulo="Mais populares" obras={obras.slice(0, 12)} />
-    <WorkShelf titulo="Lançamentos recentes" obras={recentes.slice(0, 12)} />
-  </main>
+    <div class="home-content">
+      <WorkShelf titulo="Novas Obras" subtitulo="Adicionadas recentemente ao catálogo" obras={novasObras} verTudo="/catalogo?sort=recentes" />
+      <WorkShelf titulo="Mais Lidos" subtitulo="As obras mais acessadas da plataforma" obras={obras} verTudo="/catalogo?sort=populares" />
+      <RecentReleases itens={recentes} />
+    </div>
+  </div>
 </Base>
