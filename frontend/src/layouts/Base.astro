@@ -1,4 +1,5 @@
 ---
+import XpProgressionToast from "../components/XpProgressionToast.astro";
 import '../styles/app.css';
 import '../styles/components.css';
 interface Props { title?: string; titulo?: string }
@@ -14,5 +15,6 @@ const pageTitle = title ?? titulo;
   </head>
   <body>
     <slot />
-  </body>
+    <XpProgressionToast />
+</body>
 </html>

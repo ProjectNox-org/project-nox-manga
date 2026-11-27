@@ -1,0 +1,13 @@
+---
+interface Props { icone?: string | null; conquistado?: boolean; raridade?: string | null; tamanho?: number }
+const { icone = '🏆', conquistado = false, raridade = 'COMMON', tamanho = 44 } = Astro.props;
+---
+<span class={`ach ach-${String(raridade || 'COMMON').toLowerCase()} ${conquistado ? 'on' : 'off'}`} style={`--ach:${tamanho}px`} title={conquistado ? 'Conquistada' : 'Bloqueada'}>
+  <span aria-hidden="true">{conquistado ? (icone || '🏆') : '🔒'}</span>
+</span>
+<style>
+  .ach { display: inline-grid; place-items: center; width: var(--ach); height: var(--ach); border-radius: 12px; border: 1px solid var(--line); background: var(--bg-surface); font-size: calc(var(--ach) * .48); }
+  .ach.on { border-color: var(--gold); box-shadow: 0 0 12px rgba(201,170,115,.35); }
+  .ach.off { filter: grayscale(1); opacity: .55; }
+  .ach-rare.on, .ach-epic.on, .ach-legendary.on { border-color: var(--purple); box-shadow: 0 0 14px rgba(181,154,245,.45); }
+</style>
