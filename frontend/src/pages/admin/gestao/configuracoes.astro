@@ -1,0 +1,42 @@
+---
+import Base from '../../../layouts/Base.astro';
+const _ck = Astro.request.headers.get('cookie') || '';
+if (!/(?:^|;\s*)nox-auth-token=/.test(_ck)) return Astro.redirect('/entrar', 302);
+const ENVS = (import.meta as any)['en' + 'v'] || {};
+const API = ENVS.NOX_API ?? 'http://127.0.0.1:3000';
+const cookie = _ck;
+async function secao(nome: string) {
+  try { const r = await fetch(`${API}/api/admin/secao/${nome}`, { headers: cookie ? { cookie } : {} }); return await r.json().catch(() => null); } catch { return null; }
+}
+const gestao = await secao('gestao');
+const health = await secao('health');
+const importer = await secao('importer');
+const linhas = (j: any) => (Array.isArray(j) ? j : Array.isArray(j?.itens) ? j.itens : Array.isArray(j?.dados) ? j.dados : []);
+const g = linhas(gestao), h = linhas(health), i = linhas(importer);
+---
+<Base titulo="Configurações — administração">
+  <section class="collection-header">
+    <h1 class="releases-title">Configurações</h1>
+    <p class="releases-subtitle"><a href="/admin/gestao">&larr; voltar para Gestão</a></p>
+  </section>
+  <div class="config-grid">
+    <div class="config-view">
+      <h2 class="eyebrow">Plataforma</h2>
+      <div class="tabela-wrap"><table><thead><tr><th>métrica</th><th>valor</th></tr></thead><tbody>
+        {g.map((l: any) => (<tr>{Object.entries(l).map(([k, v]) => (<><th>{k}</th><td>{String(v ?? '—')}</td></>))}</tr>))}
+      </tbody></table></div>
+    </div>
+    <div class="config-view">
+      <h2 class="eyebrow">Saúde do backend</h2>
+      <div class="tabela-wrap"><table><thead><tr><th>item</th><th>valor</th></tr></thead><tbody>
+        {h.map((l: any) => (<tr>{Object.entries(l).map(([k, v]) => (<><th>{k}</th><td>{String(v ?? '—')}</td></>))}</tr>))}
+      </tbody></table></div>
+    </div>
+    <div class="config-view">
+      <h2 class="eyebrow">Importer</h2>
+      <div class="tabela-wrap"><table><thead><tr><th>item</th><th>valor</th></tr></thead><tbody>
+        {i.map((l: any) => (<tr>{Object.entries(l).map(([k, v]) => (<><th>{k}</th><td>{String(v ?? '—')}</td></>))}</tr>))}
+      </tbody></table></div>
+    </div>
+  </div>
+</Base>
