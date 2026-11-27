@@ -1,0 +1,57 @@
+---
+interface Props { capitulo?: string; obra?: string }
+const { capitulo, obra } = Astro.props;
+---
+<section class="comentarios" data-com data-cap={capitulo ?? ""} data-obra={obra ?? ""}>
+  <h2 class="coment-title">Comentários</h2>
+  <form class="com-form" data-com-form>
+    <textarea class="field-textarea" data-com-text maxlength="2000" rows="3" placeholder="Escreva um comentário..."></textarea>
+    <div class="com-row"><span class="com-msg" data-com-msg></span><button class="btn-primary-hero" type="submit">Enviar</button></div>
+  </form>
+  <div class="com-lista" data-com-lista></div>
+</section>
+<style>
+.comentarios{margin:2rem auto;max-width:900px;padding:0 1rem}
+.coment-title{font-size:1.1rem;margin-bottom:.75rem}
+.com-form{display:grid;gap:.5rem;margin-bottom:1rem}
+.com-row{display:flex;justify-content:space-between;align-items:center;gap:.5rem}
+.com-msg{font-size:.8rem;color:var(--muted)}
+.com-item{padding:.7rem 0;border-bottom:1px solid var(--line)}
+.com-item b{color:var(--purple)}
+.com-item time{display:block;font-size:.72rem;color:var(--muted);margin-top:.2rem}
+.com-vazio{color:var(--muted);font-size:.85rem}
+</style>
+<script>
+const sec = document.querySelector('[data-com]') as HTMLElement | null;
+if (sec) {
+  const cap = sec.dataset.cap, obra = sec.dataset.obra;
+  const lista = sec.querySelector('[data-com-lista]')!;
+  const msg = sec.querySelector('[data-com-msg]')!;
+  const q = cap ? `capitulo=${encodeURIComponent(cap)}` : `obra=${encodeURIComponent(obra!)}`;
+  const fmt = (s: string) => new Date(s).toLocaleString('pt-BR');
+  const esc = (s: string) => s.replace(/[&<>]/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m]!));
+  async function carregar() {
+    try {
+      const r = await fetch(`/api/comentarios?${q}&limit=50`, { credentials: 'include' });
+      const j = await r.json();
+      const itens = j.itens ?? [];
+      lista.innerHTML = itens.length
+        ? itens.map((c: any) => `<div class="com-item"><b>${esc(c.autor ?? 'leitor')}</b><div>${esc(c.body ?? '')}</div><time>${fmt(c.created_at)}</time></div>`).join('')
+        : '<span class="com-vazio">Nenhum comentário ainda.</span>';
+    } catch { lista.innerHTML = '<span class="com-vazio">Não foi possível carregar.</span>'; }
+  }
+  sec.querySelector('[data-com-form]')!.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const el = sec.querySelector('[data-com-text]') as HTMLTextAreaElement;
+    const body = el.value.trim();
+    if (!body) return;
+    const payload: any = { body }; if (cap) payload.capitulo_id = cap; else payload.obra_slug = obra;
+    const r = await fetch('/api/comentarios', { method: 'POST', credentials: 'include', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
+    if (r.status === 401) { msg.textContent = 'Entre na sua conta para comentar.'; return; }
+    if (r.status === 429) { msg.textContent = 'Muitos comentários em pouco tempo.'; return; }
+    if (!r.ok) { msg.textContent = 'Falha ao enviar.'; return; }
+    el.value = ''; msg.textContent = 'Comentário publicado.'; carregar();
+  });
+  carregar();
+}
+</script>

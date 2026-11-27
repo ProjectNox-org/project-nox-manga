@@ -1,5 +1,6 @@
 ---
 import ReadingProgressBar from '../../components/ReadingProgressBar.astro';
+import Comments from '../../components/Comments.astro';
 import ReaderSettingsModal from '../../components/ReaderSettingsModal.astro';
 import Base from "../../layouts/Base.astro";
 const API = (globalThis as any)["pro"+"cess"]?.["e"+"nv"]?.["NOX_API"] ?? "http://127.0.0.1:3000";
@@ -29,6 +30,7 @@ const itens: any[] = pg.itens ?? pg.paginas ?? [];
     </nav>
     <ReadingProgressBar />
     <ReaderSettingsModal />
+    <Comments capitulo={id} />
   </main>
 </Base>
 <style>

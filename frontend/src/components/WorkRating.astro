@@ -1,0 +1,44 @@
+---
+interface Props { slug: string }
+const { slug } = Astro.props;
+---
+<div class="work-rating" data-rating data-slug={slug}>
+  <div class="wr-media" data-wr-media>—</div>
+  <div class="wr-stars" role="group" aria-label="Sua avaliação">
+    {[1,2,3,4,5].map((n) => <button class="wr-star" data-n={n} aria-label={`Nota ${n}`}>★</button>)}
+  </div>
+  <div class="wr-info" data-wr-info></div>
+</div>
+<style>
+.work-rating{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin:.75rem 0}
+.wr-media{font-weight:700;color:var(--gold)}
+.wr-stars{display:flex;gap:.15rem}
+.wr-star{background:none;border:0;font-size:1.35rem;line-height:1;color:#3b3b4d;cursor:pointer;padding:0 2px}
+.wr-star.on{color:var(--gold)}
+.wr-info{font-size:.75rem;color:var(--muted)}
+</style>
+<script>
+const box = document.querySelector('[data-rating]') as HTMLElement | null;
+if (box) {
+  const slug = box.dataset.slug!;
+  const media = box.querySelector('[data-wr-media]')!;
+  const info = box.querySelector('[data-wr-info]')!;
+  const stars = [...box.querySelectorAll('.wr-star')] as HTMLElement[];
+  const pintar = (n: number | null) => stars.forEach((s, i) => s.classList.toggle('on', n !== null && i < n));
+  async function carregar() {
+    const r = await fetch(`/api/obras/${encodeURIComponent(slug)}/avaliacoes`, { credentials: 'include' });
+    if (!r.ok) return;
+    const j = await r.json();
+    media.textContent = j.total ? `${String(j.media).replace('.', ',')} (${j.total})` : 'sem notas';
+    info.textContent = j.minha ? `sua nota: ${j.minha}` : 'avalie esta obra';
+    pintar(j.minha ?? null);
+  }
+  stars.forEach((s) => s.addEventListener('click', async () => {
+    const n = Number(s.dataset.n);
+    const r = await fetch('/api/avaliacoes', { method: 'POST', credentials: 'include', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ slug, rating: n }) });
+    if (r.status === 401) { info.textContent = 'entre para avaliar'; return; }
+    if (r.ok) await carregar();
+  }));
+  carregar();
+}
+</script>

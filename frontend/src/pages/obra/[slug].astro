@@ -11,6 +11,8 @@ const capsRes = await fetch(`${API}/api/obras/${slug}/capitulos?limit=500`);
 const caps: any = capsRes.ok ? await capsRes.json() : { itens: [] };
 const capitulos: any[] = caps.itens ?? caps.items ?? [];
 const ultimo = capitulos[0];
+import WorkRating from '../../components/WorkRating.astro';
+import Comments from '../../components/Comments.astro';
 ---
 <Base titulo={`${obra.title} · Project Nox`}>
   <Header path="/catalogo" />
@@ -29,6 +31,7 @@ const ultimo = capitulos[0];
           {obra.views_total ? <span class="chip">{Number(obra.views_total).toLocaleString("pt-BR")} views</span> : null}
         </div>
         {obra.synopsis ? <p class="obra-sinopse">{obra.synopsis}</p> : null}
+        <WorkRating slug={obra.slug} />
         <div class="obra-acoes">
           {ultimo ? <a class="btn-primary-hero" href={`/ler/${ultimo.id}`}>Ler capítulo {ultimo.display_number ?? ultimo.number}</a> : null}
           <a class="btn-secondary-hero" href={`/ler/${capitulos[capitulos.length - 1]?.id ?? ""}`} style={capitulos.length ? "" : "display:none"}>Início</a>
@@ -51,6 +54,7 @@ const ultimo = capitulos[0];
         </ul>
       )}
     </section>
+    <Comments obra={obra.slug} />
   </main>
 </Base>
 <style>
