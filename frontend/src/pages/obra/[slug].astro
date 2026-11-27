@@ -1,0 +1,74 @@
+---
+import Base from "../../layouts/Base.astro";
+import Header from "../../components/Header.astro";
+const API = (globalThis as any)["pro"+"cess"]?.["e"+"nv"]?.["NOX_API"] ?? "http://127.0.0.1:3000";
+const { slug } = Astro.params;
+const r = await fetch(`${API}/api/obras/${slug}`);
+if (!r.ok) return Astro.redirect("/catalogo", 302);
+const w: any = await r.json();
+const obra = w.obra ?? w;
+const capsRes = await fetch(`${API}/api/obras/${slug}/capitulos?limit=500`);
+const caps: any = capsRes.ok ? await capsRes.json() : { itens: [] };
+const capitulos: any[] = caps.itens ?? caps.items ?? [];
+const ultimo = capitulos[0];
+---
+<Base titulo={`${obra.title} · Project Nox`}>
+  <Header path="/catalogo" />
+  <main class="obra-main">
+    <section class="obra-hero">
+      <div class="obra-cover">
+        {obra.cover_id ? <img src={`/midia/${obra.cover_id}`} alt={obra.title} /> : <div class="obra-noimg" />}
+      </div>
+      <div class="obra-info">
+        <h1>{obra.title}</h1>
+        {obra.aliases?.length ? <p class="obra-aliases">{obra.aliases.join(" · ")}</p> : null}
+        <div class="chip-row">
+          <span class="kind-chip">{obra.kind}</span>
+          <span class="chip">{obra.status}</span>
+          {obra.year ? <span class="chip">{obra.year}</span> : null}
+          {obra.views_total ? <span class="chip">{Number(obra.views_total).toLocaleString("pt-BR")} views</span> : null}
+        </div>
+        {obra.synopsis ? <p class="obra-sinopse">{obra.synopsis}</p> : null}
+        <div class="obra-acoes">
+          {ultimo ? <a class="btn-primary-hero" href={`/ler/${ultimo.id}`}>Ler capítulo {ultimo.display_number ?? ultimo.number}</a> : null}
+          <a class="btn-secondary-hero" href={`/ler/${capitulos[capitulos.length - 1]?.id ?? ""}`} style={capitulos.length ? "" : "display:none"}>Início</a>
+        </div>
+      </div>
+    </section>
+    <section class="obra-caps">
+      <h2>Capítulos <span class="caps-n">({capitulos.length})</span></h2>
+      {capitulos.length === 0 ? <p class="empty">Nenhum capítulo publicado.</p> : (
+        <ul class="caps-list">
+          {capitulos.map((c) => (
+            <li>
+              <a href={`/ler/${c.id}`}>
+                <span class="cap-num">Cap. {c.display_number ?? c.number}</span>
+                {c.title ? <span class="cap-title">{c.title}</span> : null}
+                <span class="cap-data">{c.published_at ? new Date(c.published_at).toLocaleDateString("pt-BR") : ""}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  </main>
+</Base>
+<style>
+  .obra-main { max-width: 1180px; margin: 0 auto; padding: 96px 18px 80px; }
+  .obra-hero { display: grid; grid-template-columns: 240px 1fr; gap: 26px; align-items: start; }
+  .obra-cover img, .obra-noimg { width: 100%; border-radius: 14px; display: block; background: var(--panel); }
+  .obra-noimg { aspect-ratio: 2/3; }
+  .obra-info h1 { margin: 0 0 .4rem; font-size: 2rem; }
+  .obra-aliases { color: var(--muted); margin: 0 0 .6rem; font-size: .9rem; }
+  .obra-sinopse { color: #cfc9e6; line-height: 1.6; max-width: 70ch; }
+  .obra-acoes { display: flex; gap: .6rem; margin-top: 1rem; flex-wrap: wrap; }
+  .chip-row { display: flex; gap: .45rem; flex-wrap: wrap; margin: .5rem 0 .8rem; }
+  .chip, .kind-chip { border: 1px solid var(--line); border-radius: 999px; padding: .28rem .7rem; font-size: .78rem; color: var(--muted); }
+  .caps-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+  .caps-list a { display: flex; gap: .8rem; align-items: center; padding: .6rem .8rem; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+  .cap-num { color: var(--gold); font-weight: 600; min-width: 92px; }
+  .cap-title { flex: 1; color: #e9e4f7; }
+  .cap-data { color: var(--muted); font-size: .78rem; }
+  .caps-n { color: var(--muted); font-weight: 400; font-size: .9rem; }
+  @media (max-width: 700px) { .obra-hero { grid-template-columns: 130px 1fr; gap: 14px; } .obra-info h1 { font-size: 1.35rem; } }
+</style>
