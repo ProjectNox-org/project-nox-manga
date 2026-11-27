@@ -1,20 +1,50 @@
 ---
-import XpProgressionToast from "../components/XpProgressionToast.astro";
+import Header from '../components/Header.astro';
+import XpProgressionToast from '../components/XpProgressionToast.astro';
 import '../styles/app.css';
 import '../styles/components.css';
-interface Props { title?: string; titulo?: string }
-const { title, titulo = 'Project Nox' } = Astro.props;
-const pageTitle = title ?? titulo;
+const { title, titulo } = Astro.props;
+const ano = new Date().getFullYear();
 ---
 <!doctype html>
 <html lang="pt-BR">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{pageTitle}</title>
+    <title>{title ?? titulo ?? 'Project Nox'}</title>
   </head>
   <body>
+    <Header />
     <slot />
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <div class="footer-brand-col">
+          <div class="footer-brand">
+            <img src="/brand/nox-symbol-64.webp?v=3" alt="" width="32" height="32" class="footer-symbol" />
+            <div class="brand-text footer-brand-text"><span class="brand-project">Project</span> <span class="brand-nox">Nox</span></div>
+          </div>
+          <p class="footer-tagline">Histórias que nascem nas sombras e conquistam a noite.</p>
+        </div>
+        <nav class="footer-links">
+          <a href="/catalogo">Catálogo</a>
+          <a href="/ranking">Ranking</a>
+          <a href="/scans">Scans</a>
+          <a href="/loja">Loja</a>
+          <a href="/sobre">Sobre a Nox</a>
+          <a href="/privacidade">Privacidade</a>
+        </nav>
+      </div>
+      <div class="footer-bottom">
+        <span>© {ano} Project Nox</span>
+        <span class="footer-credit">Feito para quem vive histórias.</span>
+      </div>
+    </footer>
+    <nav class="mobile-bottom">
+      <a href="/">Início</a>
+      <a href="/catalogo">Catálogo</a>
+      <a href="/ranking">Ranking</a>
+      <a href="/loja">Loja</a>
+    </nav>
     <XpProgressionToast />
-</body>
+  </body>
 </html>
