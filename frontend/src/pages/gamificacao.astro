@@ -1,5 +1,13 @@
 ---
 import Base from '../layouts/Base.astro';
+import AchievementIcon from '../components/AchievementIcon.astro';
+const ENVS = (import.meta as any)['en' + 'v'] || {};
+const API = ENVS.NOX_API ?? 'http://127.0.0.1:3000';
+let conquistas: any = { total: 0, conquistados: 0, itens: [] };
+try {
+  const r = await fetch(`${API}/api/conquistas`, { headers: { cookie: Astro.request.headers.get('cookie') || '' } });
+  if (r.ok) conquistas = await r.json();
+} catch (e) {}
 const _ck = Astro.request.headers.get('cookie') || '';
 if (!/(?:^|;\s*)nox-auth-token=/.test(_ck)) return Astro.redirect('/entrar', 302);
 ---
@@ -22,6 +30,27 @@ if (!/(?:^|;\s*)nox-auth-token=/.test(_ck)) return Astro.redirect('/entrar', 302
         <p class="edit-card-sub" id="stats">—</p>
       </article>
     </div>
+
+    <section class="collection-header" style="margin-top:2rem">
+      <h2 class="collection-title">Conquistas</h2>
+      <p class="collection-sub">{conquistas.conquistados} de {conquistas.total} desbloqueadas</p>
+    </section>
+    <div class="ach-grid">
+      {(conquistas.itens || []).slice(0, 60).map((a) => (
+        <article class="continue-card ach-card">
+          <AchievementIcon icone={a.icon} conquistado={!!a.conquistado} raridade={a.rarity} tamanho={44} />
+          <div class="ach-txt">
+            <h3 class="edit-card-title">{a.title}</h3>
+            <p class="edit-card-sub">{a.description}</p>
+          </div>
+        </article>
+      ))}
+    </div>
+    <style>
+      .ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin-top: 12px; }
+      .ach-card { display: flex; gap: 12px; align-items: center; }
+      .ach-txt { min-width: 0; }
+    </style>
   </div>
 <script>
   const api = '';
