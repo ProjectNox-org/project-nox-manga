@@ -8,6 +8,7 @@ const { obras, novasObras, recentes } = await homeData();
 ---
 <Base title="Project Nox">
   <div class="home-wrapper">
+  <ParticleBackground />
     <HeroCarousel obras={obras.slice(0, 5)} />
     <div class="home-content">
       <WorkShelf titulo="Novas Obras" subtitulo="Adicionadas recentemente ao catálogo" obras={novasObras} verTudo="/catalogo?sort=recentes" />
