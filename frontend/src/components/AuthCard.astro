@@ -1,0 +1,118 @@
+---
+const { modo = 'entrar' } = Astro.props;
+const titulos = { entrar: 'Entrar na sua conta', cadastro: 'Criar sua conta', recuperar: 'Recuperar acesso' };
+const subs = {
+  entrar: 'Continue de onde parou na sua jornada.',
+  cadastro: 'Junte-se à plataforma e acompanhe seus mangás favoritos.',
+  recuperar: 'Informe seu e-mail e enviaremos um link seguro para trocar a senha.'
+};
+---
+<div class="auth-page-wrapper">
+  <div class="auth-grid-container">
+    <aside class="auth-branding-col">
+      <span class="brand-pill">PROJECT NOX</span>
+      <h1 class="brand-headline">O universo dos <span class="gradient-text">mangás</span> em um só lugar</h1>
+      <p class="brand-subtext">Leitura fluida, biblioteca sincronizada e lançamentos todos os dias.</p>
+      <div class="platform-perks-list">
+        <div><strong>Leitor otimizado</strong><span>Progresso salvo automaticamente.</span></div>
+        <div><strong>Biblioteca pessoal</strong><span>Favoritos, histórico e notificações.</span></div>
+        <div><strong>Comunidade</strong><span>Avalie, comente e acompanhe rankings.</span></div>
+      </div>
+    </aside>
+
+    <main class="auth-form-col">
+      <div class="auth-card-glass">
+        <header class="auth-card-header">
+          <h2 class="auth-card-title">{titulos[modo]}</h2>
+          <p class="auth-card-subtitle">{subs[modo]}</p>
+        </header>
+
+        <div id="alerta" class="auth-alert" hidden>
+          <span class="alert-icon">!</span><span class="alert-text" id="alerta-texto"></span>
+        </div>
+
+        <form id="form-auth" class="auth-form-body" data-modo={modo}>
+          {modo === 'cadastro' ? <div class="form-group">
+            <label for="usuario">@handle</label>
+            <input id="usuario" class="custom-input" autocomplete="username" minlength="3" maxlength="24" required />
+            <span class="field-hint" id="hint-usuario">Aguarde a verificação.</span>
+          </div> : null}
+
+          <div class="form-group">
+            <label for="email">E-mail</label>
+            <input id="email" name="email" type="email" class="custom-input" autocomplete="email" required />
+          </div>
+
+          <div class="form-group">
+            <label for="senha">Senha</label>
+            <input id="senha" name="password" type="password" class="custom-input with-suffix" autocomplete={modo === 'cadastro' ? 'new-password' : 'current-password'} minlength="8" required />
+            <button type="button" class="btn-toggle-password" id="ver" aria-label="Mostrar senha">ver</button>
+          </div>
+
+          {modo === 'entrar' ? <div class="forgot-row">
+            <a class="forgot-link" href="/recuperar">Esqueci minha senha</a>
+          </div> : null}
+
+          <button type="submit" class="btn-submit-auth" id="enviar">
+            {modo === 'entrar' ? 'Entrar' : modo === 'cadastro' ? 'Criar conta' : 'Enviar link'}
+          </button>
+        </form>
+
+        <footer class="auth-card-footer">
+          {modo === 'entrar' ? <span>Não tem conta? <a href="/cadastro">Criar agora</a></span> : <span>Já tem conta? <a href="/entrar">Entrar</a></span>}
+        </footer>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script>
+  const api = 'http://127.0.0.1:3000';
+  const form = document.getElementById('form-auth') as HTMLFormElement;
+  const modo = form.dataset.modo || 'entrar';
+  const alerta = document.getElementById('alerta') as HTMLElement;
+  const alertaTexto = document.getElementById('alerta-texto') as HTMLElement;
+
+  function mostrar(msg: string, erro = true) {
+    alerta.hidden = false;
+    alerta.classList.toggle('error', erro);
+    alerta.classList.toggle('success', !erro);
+    alertaTexto.textContent = msg;
+  }
+
+  document.getElementById('ver')?.addEventListener('click', () => {
+    const s = document.getElementById('senha') as HTMLInputElement;
+    s.type = s.type === 'password' ? 'text' : 'password';
+  });
+
+  const usuario = document.getElementById('usuario') as HTMLInputElement | null;
+  usuario?.addEventListener('blur', async () => {
+    const v = usuario.value.trim().replace(/^@/, '');
+    const hint = document.getElementById('hint-usuario') as HTMLElement;
+    if (v.length < 3) { hint.textContent = 'Informe um @handle obrigatório.'; return; }
+    try {
+      const r = await fetch(`${api}/api/auth/check-username?username=${encodeURIComponent(v)}`);
+      const j = await r.json();
+      hint.textContent = j.disponivel === false ? 'Este @handle já está em uso.' : 'Handle disponível.';
+    } catch { hint.textContent = 'Não foi possível verificar agora.'; }
+  });
+
+  form.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const email = (document.getElementById('email') as HTMLInputElement).value.trim();
+    const senha = (document.getElementById('senha') as HTMLInputElement).value;
+    if (modo === 'recuperar') {
+      const r = await fetch(`${api}/api/auth/reset/request`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email }) });
+      mostrar(r.ok ? 'Se o e-mail existir, enviaremos as instruções.' : 'Não foi possível enviar agora.', !r.ok);
+      return;
+    }
+    const rota = modo === 'cadastro' ? 'register' : 'login';
+    const corpo: Record<string, string> = { email, password: senha };
+    if (modo === 'cadastro' && usuario) corpo.username = usuario.value.trim().replace(/^@/, '');
+    const r = await fetch(`${api}/api/auth/${rota}`, { method: 'POST', headers: { 'content-type': 'application/json' }, credentials: 'include', body: JSON.stringify(corpo) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { mostrar(j.erro === 'email_nao_confirmado' ? 'Confirme seu e-mail para entrar.' : (j.erro || 'Não foi possível concluir.')); return; }
+    if (modo === 'cadastro') { mostrar('Conta criada. Verifique seu e-mail para confirmar.', false); return; }
+    location.href = '/';
+  });
+</script>
