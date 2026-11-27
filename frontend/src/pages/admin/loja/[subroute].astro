@@ -1,0 +1,27 @@
+---
+import Base from '../../../layouts/Base.astro';
+const _ck = Astro.request.headers.get('cookie') || '';
+if (!/(?:^|;\s*)nox-auth-token=/.test(_ck)) return Astro.redirect('/entrar', 302);
+const { subroute } = Astro.params;
+const ENVS = (import.meta as any)['en' + 'v'] || {};
+const API = ENVS.NOX_API ?? 'http://127.0.0.1:3000';
+let dados: any = null; let erro = '';
+try {
+  const r = await fetch(`${API}/api/admin/secao/loja`, { headers: { cookie: _ck } });
+  const j: any = await r.json();
+  if (!r.ok) erro = j?.erro ?? `http_${r.status}`; else dados = j;
+} catch (e: any) { erro = 'falha_conexao'; }
+---
+<Base titulo={`Admin · loja · ${subroute}`}>
+  <main class="container">
+    <p><a href="/admin/loja">← loja</a></p>
+    <h1>loja · {subroute}</h1>
+    {erro ? <div class="empty-notif-box"><p>Não foi possível carregar: {erro}</p></div>
+           : <div class="tabela-wrap"><table><thead><tr><th>chave</th><th>valor</th></tr></thead>
+              <tbody>
+                {Object.entries(dados?.dados ?? dados?.itens ?? dados ?? {}).map(([k,v]) => (
+                  <tr><td>{k}</td><td>{typeof v === 'object' ? JSON.stringify(v) : String(v)}</td></tr>
+                ))}
+              </tbody></table></div>}
+  </main>
+</Base>
