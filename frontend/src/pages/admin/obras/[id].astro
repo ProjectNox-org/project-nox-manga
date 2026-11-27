@@ -1,0 +1,54 @@
+---
+import Base from '../../../layouts/Base.astro';
+const { id } = Astro.params;
+const ck = Astro.request.headers.get('cookie') || '';
+if (!/(?:^|;\s*)nox-auth-token=/.test(ck)) return Astro.redirect('/entrar', 302);
+const ENVS = (import.meta as any)['en' + 'v'] || {};
+const API = ENVS.NOX_API ?? 'http://127.0.0.1:3000';
+let d: any = null; let erro = '';
+try { const r = await fetch(`${API}/api/admin/obra/${id}`, { headers: { cookie: ck } }); d = await r.json(); if (!r.ok) erro = d?.error || 'erro'; } catch { erro = 'fetch_falhou'; }
+const o = d?.obra; const caps: any[] = Array.isArray(d?.capitulos) ? d.capitulos : [];
+---
+<Base titulo={o ? `Admin · ${o.title}` : 'Admin · obra'}>
+  <main class="container" style="padding:1.5rem 0 3rem">
+    <p><a href="/admin/obras">← obras</a></p>
+    {erro || !o ? (
+      <div class="empty-notif-box"><p>Não foi possível carregar a obra ({erro}).</p></div>
+    ) : (
+      <>
+        <h1>{o.title}</h1>
+        <p class="card-sub">{o.slug} · {o.kind} · {o.status} · {o.year ?? '—'} · {o.views_total} views</p>
+        <div class="tabela-wrap" style="margin-top:1rem">
+          <table>
+            <tbody>
+              <tr><th>Autor</th><td>{o.author ?? '—'}</td></tr>
+              <tr><th>Artista</th><td>{o.artist ?? '—'}</td></tr>
+              <tr><th>Capítulos</th><td>{o.capitulos} (publicados: {o.publicados})</td></tr>
+              <tr><th>Publicada</th><td>{o.published ? 'sim' : 'não'}</td></tr>
+              <tr><th>Classificação</th><td>{o.age_rating ?? '—'}</td></tr>
+              <tr><th>Atualizada</th><td>{o.updated_at ?? '—'}</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h2 style="margin-top:2rem">Capítulos</h2>
+        <div class="tabela-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Título</th><th>Idioma</th><th>Páginas</th><th>Publicado</th><th></th></tr></thead>
+            <tbody>
+              {caps.map((c) => (
+                <tr>
+                  <td>{c.display_number ?? c.number}</td>
+                  <td>{c.title ?? '—'}</td>
+                  <td>{c.language ?? '—'}</td>
+                  <td>{c.paginas}</td>
+                  <td>{c.published_at ?? 'não'}</td>
+                  <td><a href={`/admin/obras/${o.id}/capitulos/${c.id}`}>abrir</a></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </>
+    )}
+  </main>
+</Base>

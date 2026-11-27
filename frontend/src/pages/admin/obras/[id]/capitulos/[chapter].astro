@@ -1,0 +1,35 @@
+---
+import Base from '../../../../../layouts/Base.astro';
+const { id, chapter } = Astro.params;
+const ck = Astro.request.headers.get('cookie') || '';
+if (!/(?:^|;\s*)nox-auth-token=/.test(ck)) return Astro.redirect('/entrar', 302);
+const ENVS = (import.meta as any)['en' + 'v'] || {};
+const API = ENVS.NOX_API ?? 'http://127.0.0.1:3000';
+let d: any = null; let erro = '';
+try { const r = await fetch(`${API}/api/admin/capitulo/${chapter}`, { headers: { cookie: ck } }); d = await r.json(); if (!r.ok) erro = d?.error || 'erro'; } catch { erro = 'fetch_falhou'; }
+const c = d?.capitulo;
+---
+<Base titulo={c ? `Admin · cap. ${c.display_number ?? c.number}` : 'Admin · capítulo'}>
+  <main class="container" style="padding:1.5rem 0 3rem">
+    <p><a href={c ? `/admin/obras/${c.obra_id}` : `/admin/obras/${id}`}>← obra</a></p>
+    {erro || !c ? (
+      <div class="empty-notif-box"><p>Não foi possível carregar o capítulo ({erro}).</p></div>
+    ) : (
+      <>
+        <h1>Capítulo {c.display_number ?? c.number}</h1>
+        <p class="card-sub">{c.obra_titulo} ({c.obra_slug}) · {c.language ?? '—'} · {c.paginas} páginas</p>
+        <div class="tabela-wrap" style="margin-top:1rem">
+          <table>
+            <tbody>
+              <tr><th>ID</th><td>{c.id}</td></tr>
+              <tr><th>Título</th><td>{c.title ?? '—'}</td></tr>
+              <tr><th>Publicado</th><td>{c.published_at ?? 'não'}</td></tr>
+              <tr><th>Páginas</th><td>{c.paginas}</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p style="margin-top:1rem"><a class="btn-primary-hero" href={`/ler/${c.id}`}>abrir leitor</a></p>
+      </>
+    )}
+  </main>
+</Base>
