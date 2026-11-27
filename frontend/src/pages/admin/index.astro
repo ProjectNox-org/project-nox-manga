@@ -1,0 +1,8 @@
+---
+import Base from '../../layouts/Base.astro';
+const cards=[['gestao','Gestão'],['health','Saúde'],['importer','Importer'],['obras','Obras'],['loja','Loja'],['rankings','Rankings'],['reports','Denúncias'],['scans','Scans'],['staff','Staff'],['tags','Tags'],['tickets','Tickets']];
+---
+<Base titulo="Admin — Project Nox">
+<section class="collection-header"><h1 class="releases-title">Painel administrativo</h1></section>
+<div class="releases-grid">{cards.map(([s,t])=>(<a class="editorial-card" href={`/admin/${s}`}><div class="card-meta"><strong>{t}</strong><span class="card-sub">/admin/{s}</span></div></a>))}</div>
+</Base>
