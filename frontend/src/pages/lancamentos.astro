@@ -1,0 +1,26 @@
+---
+import Base from '../layouts/Base.astro';
+---
+<Base title="Lançamentos">
+  <div class="container spacer-bottom">
+    <section class="releases-section">
+      <header class="releases-header"><div><h1 class="releases-title">Lançamentos</h1><p class="releases-subtitle">Capítulos publicados recentemente</p></div></header>
+      <div class="releases-grid" id="lista"></div>
+    </section>
+  </div>
+<script>
+  (async () => {
+    const r = await fetch('http://127.0.0.1:3000/api/lancamentos?limit=40');
+    const j = await r.json();
+    (document.getElementById('lista') as HTMLElement).innerHTML = (j.itens || []).map((i: any) => `
+      <article class="release-row-card">
+        <div class="release-top-row"><span class="kind-tag">${i.kind || ''}</span><span class="stale-notice">${(i.published_at || '').slice(0, 10)}</span></div>
+        <div class="release-main">
+          <a class="cover-thumb-link" href="/obra/${i.obra_slug}"><img class="thumb-img" src="/midia/${i.cover_id || ''}" alt="" loading="lazy" /></a>
+          <div><h3 class="edit-card-title"><a href="/obra/${i.obra_slug}">${i.obra_titulo}</a></h3>
+          <div class="chapter-pills-row"><a class="chapter-pill" href="/ler/${i.id}"><span class="pill-dot"></span><span class="ch-text">cap. ${i.display_number ?? i.number}</span></a></div></div>
+        </div>
+      </article>`).join('');
+  })();
+</script>
+</Base>

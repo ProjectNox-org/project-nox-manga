@@ -1,0 +1,31 @@
+---
+import Base from '../../layouts/Base.astro';
+const { username } = Astro.params;
+---
+<Base title={`@${username}`}>
+  <div class="container spacer-bottom">
+    <section class="collection-header">
+      <div class="avatar-frame"><div class="avatar-glow-ring"></div><span class="avatar-large-fallback" id="ini">?</span></div>
+      <h1 class="collection-title" id="nome">@${username}</h1>
+      <p class="collection-sub" id="sub">Carregando perfil…</p>
+    </section>
+    <div class="continue-grid" id="stats"></div>
+  </div>
+<script define:vars={{ username }}>
+  const api = 'http://127.0.0.1:3000';
+  (async () => {
+    const r = await fetch(`${api}/api/u/${encodeURIComponent(username)}`);
+    if (!r.ok) { document.getElementById('sub')!.textContent = 'Perfil não encontrado.'; return; }
+    const j = await r.json();
+    const p = j.perfil || j;
+    document.getElementById('nome')!.textContent = p.display_name || p.username || username;
+    document.getElementById('ini')!.textContent = (p.display_name || p.username || username).slice(0,1).toUpperCase();
+    document.getElementById('sub')!.textContent = p.bio || `nível ${p.nivel || 1} · ${p.xp || 0} XP`;
+    const st = j.stats || {};
+    document.getElementById('stats')!.innerHTML =
+      `<article class="continue-card"><h2 class="edit-card-title">${st.obras || 0}</h2><p class="edit-card-sub">obras na biblioteca</p></article>
+       <article class="continue-card"><h2 class="edit-card-title">${st.capitulos || 0}</h2><p class="edit-card-sub">capítulos lidos</p></article>
+       <article class="continue-card"><h2 class="edit-card-title">${st.comentarios || 0}</h2><p class="edit-card-sub">comentários</p></article>`;
+  })();
+</script>
+</Base>
