@@ -1,0 +1,15 @@
+---
+import Base from '../../layouts/Base.astro';
+const API = import.meta.env.NOX_API ?? 'http://127.0.0.1:3000';
+async function rk(t:string){ try{ const r=await fetch(`${API}/api/ranking?tipo=${t}&limit=50`); return r.ok?(await r.json()).itens??[]:[]; }catch{ return []; } }
+const porXp=await rk('xp'); const porCap=await rk('capitulos');
+---
+<Base titulo="Hall da Fama — Project Nox">
+<section class="collection-header"><h1 class="releases-title">Hall da Fama</h1>
+<p class="releases-subtitle">Os maiores nomes do Nox</p></section>
+<div class="shelf-actions"><a class="chip" href="/ranking">← Ranking</a></div>
+<section class="releases-section"><h2 class="releases-title">Mais XP</h2>
+<div class="releases-grid">{porXp.map((u:any)=>(<div class="badge-tile"><span class="kind-chip">#{u.posicao??'-'}</span><strong style={`color:${u.name_color||'var(--purple)'}`}>{u.display_name||u.username}</strong><span class="card-sub">{u.xp} XP · nível {u.nivel}</span></div>))}</div></section>
+<section class="releases-section"><h2 class="releases-title">Mais capítulos lidos</h2>
+<div class="releases-grid">{porCap.map((u:any)=>(<div class="badge-tile"><span class="kind-chip">#{u.posicao??'-'}</span><strong>{u.display_name||u.username}</strong><span class="card-sub">{u.capitulos_lidos} capítulos</span></div>))}</div></section>
+</Base>

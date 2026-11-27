@@ -1,0 +1,23 @@
+---
+import Base from '../../layouts/Base.astro';
+const API = import.meta.env.NOX_API ?? 'http://127.0.0.1:3000';
+const { code } = Astro.params;
+let convite:any=null, erro='';
+try{ const r=await fetch(`${API}/api/convite/${encodeURIComponent(code??'')}`); if(r.ok){const j=await r.json(); convite=j.convite; convite.tipo=j.tipo;} else erro='Convite inválido ou expirado.'; }catch{ erro='Não foi possível verificar o convite.'; }
+---
+<Base titulo="Convite — Project Nox">
+<section class="auth-page-wrapper"><div class="auth-card-glass">
+  <div class="auth-card-header"><h1 class="auth-card-title">Convite</h1>
+  <p class="auth-card-subtitle">Código <strong>{code}</strong></p></div>
+  <div class="auth-form-body">
+    {erro && <div class="auth-alert">{erro}</div>}
+    {convite && <div class="auth-alert" style="border-color:var(--gold)">
+      <p>Tipo: <strong>{convite.tipo}</strong></p>
+      <p>Papel: <strong>{convite.role ?? convite.position_id ?? 'membro'}</strong></p>
+      {convite.used_at && <p>Usado em {new Date(convite.used_at).toLocaleDateString('pt-BR')}</p>}
+      {convite.expires_at && <p>Expira em {new Date(convite.expires_at).toLocaleDateString('pt-BR')}</p>}
+    </div>}
+    <a class="btn-submit-auth" href="/entrar" style="display:block;text-align:center">Entrar na conta</a>
+  </div>
+</div></section>
+</Base>

@@ -1,0 +1,14 @@
+---
+import Base from '../../layouts/Base.astro';
+const API = import.meta.env.NOX_API ?? 'http://127.0.0.1:3000';
+let scans:any[]=[]; try{ const r=await fetch(`${API}/api/scan`); if(r.ok) scans=(await r.json()).scans??[]; }catch{}
+---
+<Base titulo="Scans — Project Nox">
+<section class="collection-header"><h1 class="releases-title">Scans</h1>
+<p class="releases-subtitle">Grupos de tradução e produção</p>
+<a class="btn-primary-hero" href="/scans/cadastrar">Cadastrar scan</a></section>
+<div class="releases-grid">{scans.map((s:any)=>(<a class="release-row-card" href={`/scans/${s.slug}`}>
+  <div class="release-main"><strong>{s.name}</strong> {s.is_official && <span class="kind-chip">oficial</span>}
+  <span class="card-sub">{s.capitulos??0} capítulos · {s.estagios??0} estágios</span></div></a>))}
+  {scans.length===0 && <div class="empty-releases">Nenhuma scan cadastrada.</div>}</div>
+</Base>

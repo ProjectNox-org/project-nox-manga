@@ -1,0 +1,29 @@
+---
+import Base from '../../layouts/Base.astro';
+---
+<Base titulo="Cadastrar scan — Project Nox">
+<section class="collection-header"><a class="chip" href="/scans">← scans</a>
+<h1 class="releases-title">Cadastrar scan</h1></section>
+<section class="auth-page-wrapper"><div class="auth-card-glass"><div class="auth-form-body">
+<form id="f" class="auth-form-body">
+ <div class="form-group"><label class="field-label">Nome</label><input id="nome" class="custom-input" required minlength="3" maxlength="60"></div>
+ <div class="form-group"><label class="field-label">Descrição</label><textarea id="desc" class="field-textarea" maxlength="300"></textarea></div>
+ <button class="btn-submit-auth" type="submit">Cadastrar</button>
+ <div id="msg" class="auth-alert" hidden></div>
+</form></div></div></section>
+<script>
+const API = 'http://127.0.0.1:3000';
+document.getElementById('f')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const nome=(document.getElementById('nome') as HTMLInputElement).value.trim();
+  const desc=(document.getElementById('desc') as HTMLTextAreaElement).value.trim();
+  const msg=document.getElementById('msg') as HTMLElement; msg.hidden=false;
+  try{
+    const r=await fetch(`${API}/api/scan/cadastrar`,{method:'POST',headers:{'content-type':'application/json'},credentials:'include',body:JSON.stringify({name:nome,description:desc})});
+    const j=await r.json().catch(()=>({}));
+    if(r.ok && j.slug){ msg.textContent='Scan criada. Redirecionando…'; location.href=`/scans/${j.slug}`; }
+    else msg.textContent = (r.status===401||r.status===403) ? 'Faça login com uma conta autorizada.' : (j.erro||'Não foi possível cadastrar.');
+  }catch{ msg.textContent='Falha de rede.'; }
+});
+</script>
+</Base>
