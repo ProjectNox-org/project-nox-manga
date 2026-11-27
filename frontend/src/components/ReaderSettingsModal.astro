@@ -1,0 +1,64 @@
+---
+// ReaderSettingsModal: largura de leitura, tema e ajuste de imagem, persistidos em localStorage.
+---
+<div class="reader-settings" hidden>
+  <button class="rs-open" type="button" aria-label="Configurações de leitura">A</button>
+  <div class="rs-panel" hidden>
+    <strong>Leitura</strong>
+    <label>Largura
+      <select class="rs-largura">
+        <option value="normal">Normal</option>
+        <option value="estreita">Estreita</option>
+        <option value="larga">Larga</option>
+      </select>
+    </label>
+    <label>Tema
+      <select class="rs-tema">
+        <option value="escuro">Escuro</option>
+        <option value="claro">Claro</option>
+      </select>
+    </label>
+    <label class="rs-check"><input type="checkbox" class="rs-fit" /> Ajustar à tela</label>
+    <button class="rs-close" type="button">Fechar</button>
+  </div>
+</div>
+<style>
+  .reader-settings { position: fixed; right: .8rem; bottom: 4.6rem; z-index: 61; }
+  .rs-open { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line); background: rgba(6,7,12,.9); color: #fff; font-weight: 700; }
+  .rs-panel { margin-top: .5rem; display: grid; gap: .6rem; padding: .9rem; min-width: 190px; border-radius: 12px; border: 1px solid var(--line); background: rgba(11,12,19,.97); color: #eee; font-size: .85rem; }
+  .rs-panel label { display: grid; gap: .25rem; }
+  .rs-panel select { background: #14151f; color: #eee; border: 1px solid var(--line); border-radius: 8px; padding: .35rem; }
+  .rs-check { display: flex; align-items: center; gap: .4rem; }
+  .rs-close { padding: .45rem; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: #eee; }
+</style>
+<script>
+  const box = document.querySelector<HTMLElement>('.reader-settings');
+  const panel = box?.querySelector<HTMLElement>('.rs-panel');
+  const leitor = document.querySelector<HTMLElement>('[data-leitor]');
+  const largura = box?.querySelector<HTMLSelectElement>('.rs-largura');
+  const tema = box?.querySelector<HTMLSelectElement>('.rs-tema');
+  const fit = box?.querySelector<HTMLInputElement>('.rs-fit');
+  const aplicar = () => {
+    if (largura && leitor) leitor.dataset.largura = largura.value;
+    document.body.classList.toggle('modo-claro', tema?.value === 'claro');
+    document.querySelectorAll<HTMLImageElement>('[data-paginas] img').forEach((img) => {
+      img.style.objectFit = fit?.checked ? 'contain' : '';
+      img.style.maxHeight = fit?.checked ? '100vh' : '';
+    });
+  };
+  const salvar = () => {
+    try {
+      localStorage.setItem('nox-reader', JSON.stringify({ l: largura?.value, t: tema?.value, f: !!fit?.checked }));
+    } catch {}
+  };
+  try {
+    const st = JSON.parse(localStorage.getItem('nox-reader') || '{}');
+    if (largura && st.l) largura.value = st.l;
+    if (tema && st.t) tema.value = st.t;
+    if (fit) fit.checked = !!st.f;
+  } catch {}
+  aplicar();
+  box?.querySelector('.rs-open')?.addEventListener('click', () => { if (panel) panel.hidden = !panel.hidden; });
+  box?.querySelector('.rs-close')?.addEventListener('click', () => { if (panel) panel.hidden = true; });
+  [largura, tema, fit].forEach((el) => el?.addEventListener('change', () => { aplicar(); salvar(); }));
+</script>
