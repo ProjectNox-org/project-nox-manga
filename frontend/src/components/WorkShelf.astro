@@ -45,3 +45,8 @@ const { titulo, subtitulo, obras, verTudo = "/catalogo" } = Astro.props;
     });
   });
 </script>
+<style is:global>
+  .shelf-card .card-status{ display:none; }
+  .shelf-card .card-info{ gap:0; }
+  .shelf-card .card-work-title{ margin:0; line-height:1.42; }
+</style>

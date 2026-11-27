@@ -11,6 +11,7 @@ const slides = obras.slice(0, 5);
       <div class="backdrop-radial-glow"></div>
     </div>
   )}
+  <div class="hero-container">
   <div class="hero-stage">
     <div class="deck" data-deck>
       {slides.map((o, i) => (
@@ -51,6 +52,7 @@ const slides = obras.slice(0, 5);
       <button class="slider-arrow" data-nav="1" aria-label="próximo">&#8250;</button>
     </div>
   </div>
+  </div>
 </section>
 <script>
   const hero = document.querySelector("[data-hero]") as HTMLElement | null;
@@ -83,3 +85,7 @@ const slides = obras.slice(0, 5);
     paint();
   }
 </script>
+<style is:global>
+  .hero-carousel .carousel-cinematic-bar{ height:60px; }
+  .hero-carousel .hero-stage{ margin-bottom:0; }
+</style>
