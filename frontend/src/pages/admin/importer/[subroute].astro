@@ -17,5 +17,6 @@ try {
 // allowlist: a subrota precisa existir na resposta da secao, senao volta para o indice
 if (!chaves.includes(String(subroute))) return Astro.redirect(`/admin/${SEC}`, 302);
 ---
-<Base titulo={`${SEC} / ${subroute}`}><AdminTabela secao={SEC} titulo={`${SEC} / ${subroute}`} /></Base>
-<p class="releases-subtitle"><a href={`/admin/${SEC}`}>&larr; voltar para {SEC}</a></p>
+<Base titulo={`${SEC} / ${subroute}`}><AdminTabela secao={SEC} titulo={`${SEC} / ${subroute}`} />
+  <p class="releases-subtitle"><a href={`/admin/${SEC}`}>&larr; voltar para {SEC}</a></p>
+</Base>
