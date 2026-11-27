@@ -18,22 +18,20 @@ const linhas: Lancamento[] = itens.slice(0, 12);
     <div class="releases-grid">
       {linhas.map((c) => (
         <div class="release-row-card">
-          <div class="release-top-row">
-            {c.kind && <span class="kind-tag">{kindLabel(c.kind)}</span>}
-            <span class="timestamp-box">{tempoRelativo(c.published_at)}</span>
-          </div>
-          <div class="release-main">
-            <a class="cover-thumb-link" href={`/obra/${c.obra_slug ?? ""}`}>
-              <img class="thumb-img" src={cover(c.cover_id)} alt={c.obra_titulo ?? ""} loading="lazy" width="56" height="78" />
-            </a>
-            <div class="release-info">
-              <a class="work-link" href={`/obra/${c.obra_slug ?? ""}`}>{c.obra_titulo}</a>
-              <div class="chapter-pills-row">
-                <a class="chapter-pill latest-pill" href={`/ler/${c.id}`}>
-                  <span class="pill-dot"></span>
-                  <span class="ch-text">cap. {c.display_number ?? c.number}</span>
-                </a>
-              </div>
+          <a class="cover-thumb-link" href={`/obra/${c.obra_slug ?? ""}`}>
+            <img class="thumb-img" src={cover(c.cover_id)} alt={c.obra_titulo ?? ""} loading="lazy" width="64" height="90" />
+          </a>
+          <div class="release-info">
+            <div class="release-top-row">
+              {c.kind && <span class="kind-tag">{kindLabel(c.kind)}</span>}
+              <span class="timestamp-box">{tempoRelativo(c.published_at)}</span>
+            </div>
+            <a class="work-link" href={`/obra/${c.obra_slug ?? ""}`}>{c.obra_titulo}</a>
+            <div class="chapter-pills-row">
+              <a class="chapter-pill latest-pill" href={`/ler/${c.id}`}>
+                <span class="pill-dot"></span>
+                <span class="ch-text">cap. {c.display_number ?? c.number}</span>
+              </a>
             </div>
           </div>
         </div>
@@ -43,6 +41,11 @@ const linhas: Lancamento[] = itens.slice(0, 12);
 </section>
 <style is:global>
 .releases-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.15rem;width:100%}
+.release-row-card{display:flex;align-items:center;gap:16px;padding:13.6px 17.6px}
+.cover-thumb-link{flex:0 0 auto;width:66px;height:92px;display:block}
+.thumb-img{width:64px;height:90px;object-fit:cover;display:block;border-radius:6px}
+.release-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.release-top-row{display:flex;align-items:center;gap:9.6px;font-size:16px}
 @media (max-width:900px){.releases-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:560px){.releases-grid{grid-template-columns:1fr}}
 </style>

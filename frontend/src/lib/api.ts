@@ -45,7 +45,7 @@ export async function homeData() {
   const [pop, novas, recent, rank] = await Promise.all([
     json("/api/obras?sort=populares&limit=24"),
     json("/api/obras?sort=recentes&limit=24"),
-    json("/api/lancamentos?limit=12"),
+    json("/api/lancamentos?limit=15"),
     json("/api/ranking?tipo=xp&limit=5"),
   ]);
   const obras: Obra[] = (pop && (pop.itens || pop.items)) || [];

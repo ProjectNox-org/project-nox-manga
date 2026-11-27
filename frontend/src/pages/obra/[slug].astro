@@ -1,84 +1,88 @@
 ---
 import Base from "../../layouts/Base.astro";
-import Header from "../../components/Header.astro";
-const API = (globalThis as any)["pro"+"cess"]?.["e"+"nv"]?.["NOX_API"] ?? "http://127.0.0.1:3000";
+import WorkRating from "../../components/WorkRating.astro";
+import Comments from "../../components/Comments.astro";
+import ReportModal from "../../components/ReportModal.astro";
+import AgeGateModal from "../../components/AgeGateModal.astro";
+import BatchChapterModal from "../../components/BatchChapterModal.astro";
 const { slug } = Astro.params;
-const r = await fetch(`${API}/api/obras/${slug}`);
-if (!r.ok) return Astro.redirect("/catalogo", 302);
-const w: any = await r.json();
-const obra = w.obra ?? w;
-const capsRes = await fetch(`${API}/api/obras/${slug}/capitulos?limit=500`);
-const caps: any = capsRes.ok ? await capsRes.json() : { itens: [] };
-const capitulos: any[] = caps.itens ?? caps.items ?? [];
-const ultimo = capitulos[0];
-import WorkRating from '../../components/WorkRating.astro';
-import BatchChapterModal from '../../components/BatchChapterModal.astro';
-import Comments from '../../components/Comments.astro';
-import AgeGateModal from '../../components/AgeGateModal.astro';
-import ReportModal from '../../components/ReportModal.astro';
+const API = "http://127.0.0.1:3000";
+let obra: any = null;
+try { const r = await fetch(`${API}/api/obras/${slug}`); if (r.ok) obra = (await r.json()).obra ?? await r.json(); } catch {}
+if (!obra) return Astro.redirect("/catalogo", 302);
+const capitulos: any[] = obra.capitulos ?? [];
+const primeiro = capitulos.find((c: any) => c.published_at || c.published);
+const fmtViews = (n: number) => n >= 1000 ? (n / 1000).toFixed(1).replace(".", ",") + " mil" : String(n ?? 0);
+const ano = obra.year ?? "—";
 ---
-<Base titulo={`${obra.title} · Project Nox`}>
-  <Header path="/catalogo" />
-  <main class="obra-main">
-    <section class="obra-hero">
-      <div class="obra-cover">
-        {obra.cover_id ? <img src={`/midia/${obra.cover_id}`} alt={obra.title} /> : <div class="obra-noimg" />}
-      </div>
-      <div class="obra-info">
-        <h1>{obra.title}</h1>
-        {obra.aliases?.length ? <p class="obra-aliases">{obra.aliases.join(" · ")}</p> : null}
-        <div class="chip-row">
-          <span class="kind-chip">{obra.kind}</span>
-          <span class="chip">{obra.status}</span>
-          {obra.year ? <span class="chip">{obra.year}</span> : null}
-          {obra.views_total ? <span class="chip">{Number(obra.views_total).toLocaleString("pt-BR")} views</span> : null}
+<Base title={`${obra.title} — Project Nox`}>
+  <div class="work-backdrop">
+    <img class="backdrop-img" src={`/midia/${obra.cover_id}`} alt="" loading="eager" />
+    <div class="backdrop-gradient"></div>
+  </div>
+  <main class="container work-page-root spacer-bottom">
+    <nav class="work-breadcrumb">
+      <a href="/">Início</a><span class="crumb-separator">/</span>
+      <a href="/catalogo">Catálogo</a><span class="crumb-separator">/</span>
+      <span class="crumb-current">{obra.title}</span>
+    </nav>
+
+    <section class="work-hero-section">
+      <div class="work-cover-column">
+        <div class="work-cover-wrapper">
+          <img src={`/midia/${obra.cover_id}`} alt={`Capa de ${obra.title}`} loading="eager" />
         </div>
-        {obra.synopsis ? <p class="obra-sinopse">{obra.synopsis}</p> : null}
+      </div>
+      <div class="work-details-column">
+        <h1 class="work-title">{obra.title}</h1>
+        {obra.aliases?.length ? <p class="work-aliases">{obra.aliases.join(" · ")}</p> : null}
         <WorkRating slug={obra.slug} />
-        <ReportModal tipo="WORK" alvo={obra.id} />
-        <div class="obra-acoes">
-          {ultimo ? <a class="btn-primary-hero" href={`/ler/${ultimo.id}`}>Ler capítulo {ultimo.display_number ?? ultimo.number}</a> : null}
-          <a class="btn-secondary-hero" href={`/ler/${capitulos[capitulos.length - 1]?.id ?? ""}`} style={capitulos.length ? "" : "display:none"}>Início</a>
+        <div class="work-hero-actions">
+          {primeiro && <a class="btn-primary-hero" href={`/ler/${primeiro.id}`}>Ler agora</a>}
+          <a class="btn-secondary-hero" href={`/catalogo?q=${encodeURIComponent(obra.title)}`}>Obras parecidas</a>
+          <ReportModal tipo="WORK" alvo={obra.id} />
+        </div>
+        <div class="work-metrics-inline">
+          <span><strong>{fmtViews(obra.views_total)}</strong> views</span>
+          <span><strong>{ano}</strong></span>
+          <span><strong>{obra.status ?? "—"}</strong></span>
         </div>
       </div>
     </section>
-    <section class="obra-caps">
-      <h2>Capítulos <span class="caps-n">({capitulos.length})</span></h2>
-      {capitulos.length === 0 ? <p class="empty">Nenhum capítulo publicado.</p> : (
-        <ul class="caps-list">
-          {capitulos.map((c) => (
-            <li>
-              <a href={`/ler/${c.id}`}>
-                <span class="cap-num">Cap. {c.display_number ?? c.number}</span>
-                {c.title ? <span class="cap-title">{c.title}</span> : null}
-                <span class="cap-data">{c.published_at ? new Date(c.published_at).toLocaleDateString("pt-BR") : ""}</span>
-              </a>
-            </li>
-          ))}
-        </ul>
-      )}
+
+    <section class="work-specs-section work-specs-editorial">
+      <header class="specs-section-header">
+        <div class="specs-heading-wrap"><h2>Informações</h2></div>
+        <p class="specs-subtext">Dados editoriais da obra</p>
+      </header>
+      <div class="specs-unified-panel">
+        <div class="specs-subpanel"><h3>Sinopse</h3><p>{obra.synopsis || obra.description || "Sinopse não disponível."}</p></div>
+        <div class="specs-subpanel"><h3>Detalhes</h3><dl><dt>Tipo</dt><dd>{obra.kind ?? "—"}</dd><dt>Status</dt><dd>{obra.status ?? "—"}</dd><dt>Ano</dt><dd>{ano}</dd><dt>Autor</dt><dd>{obra.author ?? "—"}</dd><dt>Artista</dt><dd>{obra.artist ?? "—"}</dd></dl></div>
+        <div class="specs-subpanel"><h3>Publicação</h3><dl><dt>Capítulos</dt><dd>{capitulos.length}</dd><dt>Último capítulo</dt><dd>{obra.latest_chapter_published_at ? new Date(obra.latest_chapter_published_at).toLocaleDateString("pt-BR") : "—"}</dd></dl></div>
+        <div class="specs-subpanel"><h3>Classificação</h3><dl><dt>Faixa</dt><dd>{obra.age_rating ? obra.age_rating + "+" : "Livre"}</dd><dt>Publicada</dt><dd>{obra.published ? "Sim" : "Não"}</dd></dl></div>
+      </div>
     </section>
-    <BatchChapterModal slug={obra.slug} total={capitulos?.length ?? 0} />
-  <Comments obra={obra.slug} />
-    <AgeGateModal idade={obra.age_rating} />
+
+    <section class="work-chapters-section">
+      <header class="chapters-header">
+        <div class="chapters-title-wrap"><h2>Capítulos</h2><span class="chapters-count">{capitulos.length}</span></div>
+        {primeiro && <a class="btn-read-primary" href={`/ler/${primeiro.id}`}>Começar a ler</a>}
+      </header>
+      <div class="chapters-toolbar"><BatchChapterModal slug={obra.slug} total={capitulos.length} /></div>
+      <div class="chapter-list-wrap">
+        {capitulos.map((c: any) => (
+          <a class="chapter-card" href={`/ler/${c.id}`}>
+            <span class="chapter-num">Cap. {c.display_number ?? c.number}</span>
+            <span class="chapter-name">{c.title ?? `Capítulo ${c.number}`}</span>
+            <span class="chapter-date">{c.published_at ? new Date(c.published_at).toLocaleDateString("pt-BR") : ""}</span>
+          </a>
+        ))}
+      </div>
+    </section>
+
+    <section class="comments-section-root">
+      <Comments obra={obra.slug} />
+    </section>
   </main>
+  <AgeGateModal idade={obra.age_rating} />
 </Base>
-<style>
-  .obra-main { max-width: 1180px; margin: 0 auto; padding: 96px 18px 80px; }
-  .obra-hero { display: grid; grid-template-columns: 240px 1fr; gap: 26px; align-items: start; }
-  .obra-cover img, .obra-noimg { width: 100%; border-radius: 14px; display: block; background: var(--panel); }
-  .obra-noimg { aspect-ratio: 2/3; }
-  .obra-info h1 { margin: 0 0 .4rem; font-size: 2rem; }
-  .obra-aliases { color: var(--muted); margin: 0 0 .6rem; font-size: .9rem; }
-  .obra-sinopse { color: #cfc9e6; line-height: 1.6; max-width: 70ch; }
-  .obra-acoes { display: flex; gap: .6rem; margin-top: 1rem; flex-wrap: wrap; }
-  .chip-row { display: flex; gap: .45rem; flex-wrap: wrap; margin: .5rem 0 .8rem; }
-  .chip, .kind-chip { border: 1px solid var(--line); border-radius: 999px; padding: .28rem .7rem; font-size: .78rem; color: var(--muted); }
-  .caps-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
-  .caps-list a { display: flex; gap: .8rem; align-items: center; padding: .6rem .8rem; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
-  .cap-num { color: var(--gold); font-weight: 600; min-width: 92px; }
-  .cap-title { flex: 1; color: #e9e4f7; }
-  .cap-data { color: var(--muted); font-size: .78rem; }
-  .caps-n { color: var(--muted); font-weight: 400; font-size: .9rem; }
-  @media (max-width: 700px) { .obra-hero { grid-template-columns: 130px 1fr; gap: 14px; } .obra-info h1 { font-size: 1.35rem; } }
-</style>
