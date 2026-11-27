@@ -1,0 +1,63 @@
+---
+import Base from '../layouts/Base.astro';
+---
+<Base title="Minha biblioteca">
+  <div class="container spacer-bottom">
+    <section class="collection-header">
+      <h1 class="collection-title">Minha biblioteca</h1>
+      <p class="collection-sub" id="sub-bib">Carregando…</p>
+    </section>
+    <div class="chips" id="filtros">
+      <button class="chip active" data-status="">Todas</button>
+      <button class="chip" data-status="READING">Lendo</button>
+      <button class="chip" data-status="COMPLETED">Concluídas</button>
+      <button class="chip" data-status="PLAN">Quero ler</button>
+    </div>
+    <div class="continue-grid" id="lista"></div>
+    <div class="empty-notif-box" id="vazio" hidden>
+      <div class="empty-icon-wrap">★</div>
+      <h2 class="empty-title">Sua biblioteca está vazia</h2>
+      <p class="empty-description">Adicione obras pelo catálogo para acompanhar seu progresso.</p>
+      <div class="empty-actions"><a class="btn-empty-action primary" href="/catalogo">Explorar catálogo</a></div>
+    </div>
+  </div>
+
+<script>
+  const api = 'http://127.0.0.1:3000';
+  let itens: any[] = [];
+  function render() {
+    const lista = document.getElementById('lista') as HTMLElement;
+    const vazio = document.getElementById('vazio') as HTMLElement;
+    const filtro = (document.querySelector('.chip.active') as HTMLElement)?.dataset.status || '';
+    const vis = itens.filter((i) => !filtro || i.status === filtro);
+    vazio.hidden = vis.length > 0;
+    lista.innerHTML = vis.map((i) => `
+      <article class="continue-card">
+        <div class="continue-top"><span class="chip">${i.kind || ''}</span><span class="eyebrow">${i.status || ''}</span></div>
+        <h3 class="edit-card-title"><a href="/obra/${i.slug}">${i.titulo || i.title}</a></h3>
+        <p class="edit-card-sub">${i.capitulo_numero ? `continuar cap. ${i.capitulo_numero}${i.pagina ? ` · pág. ${i.pagina}` : ''}` : 'sem leitura iniciada'}</p>
+        <div class="form-actions">
+          ${i.capitulo_id ? `<a class="button primary" href="/ler/${i.capitulo_id}">Continuar</a>` : `<a class="button secondary" href="/obra/${i.slug}">Abrir</a>`}
+          <button class="button secondary compact" data-remover="${i.slug}">Remover</button>
+        </div>
+      </article>`).join('');
+    lista.querySelectorAll('[data-remover]').forEach((b) => b.addEventListener('click', async (ev) => {
+      const slug = (ev.currentTarget as HTMLElement).dataset.remover;
+      await fetch(`${api}/api/biblioteca`, { method: 'POST', credentials: 'include', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ slug, acao: 'remover' }) });
+      itens = itens.filter((i) => i.slug !== slug); render();
+    }));
+  }
+  document.querySelectorAll('.chip').forEach((c) => c.addEventListener('click', () => {
+    document.querySelectorAll('.chip').forEach((x) => x.classList.remove('active'));
+    (c as HTMLElement).classList.add('active'); render();
+  }));
+  (async () => {
+    const r = await fetch(`${api}/api/biblioteca`, { credentials: 'include' });
+    if (r.status === 401) { location.href = '/entrar'; return; }
+    const j = await r.json();
+    itens = j.itens || j.items || [];
+    (document.getElementById('sub-bib') as HTMLElement).textContent = `${itens.length} obra(s) na biblioteca`;
+    render();
+  })();
+</script>
+</Base>

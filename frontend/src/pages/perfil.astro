@@ -1,0 +1,73 @@
+---
+import Base from '../layouts/Base.astro';
+---
+<Base title="Meu perfil">
+  <div class="container spacer-bottom">
+    <section class="collection-header">
+      <h1 class="collection-title">Meu perfil</h1>
+      <p class="collection-sub" id="sub-perfil">Carregando seus dados…</p>
+    </section>
+
+    <div class="continue-grid">
+      <article class="continue-card">
+        <div class="avatar-frame">
+          <div class="avatar-glow-ring"></div>
+          <img id="avatar" class="avatar-large-img" alt="" hidden />
+          <span id="avatar-fallback" class="avatar-large-fallback">?</span>
+          <label class="avatar-upload-badge" for="arquivo" title="Trocar avatar">+</label>
+          <input id="arquivo" type="file" accept="image/png,image/jpeg,image/webp" hidden />
+        </div>
+        <p class="edit-card-sub" id="aviso-avatar"></p>
+      </article>
+
+      <article class="continue-card">
+        <h2 class="edit-card-title">Dados públicos</h2>
+        <form id="form-perfil" class="form-actions">
+          <label class="field-label" for="nome">Nome de exibição</label>
+          <input id="nome" class="field-input" minlength="2" maxlength="40" />
+          <label class="field-label" for="bio">Bio</label>
+          <textarea id="bio" class="field-textarea" maxlength="300" rows="4"></textarea>
+          <span class="field-hint" id="hint-perfil"></span>
+          <button type="submit" class="button primary">Salvar</button>
+        </form>
+      </article>
+    </div>
+  </div>
+
+<script>
+  const api = 'http://127.0.0.1:3000';
+  const $ = (id: string) => document.getElementById(id) as HTMLElement;
+  async function carregar() {
+    const r = await fetch(`${api}/api/perfil`, { credentials: 'include' });
+    if (r.status === 401) { location.href = '/entrar'; return; }
+    const j = await r.json();
+    const p = j.perfil || {};
+    $('nome').setAttribute('value', p.display_name || '');
+    ($('nome') as HTMLInputElement).value = p.display_name || '';
+    ($('bio') as HTMLTextAreaElement).value = p.bio || '';
+    $('sub-perfil').textContent = `@${p.username || 'leitor'} · nível ${(j.stats?.nivel ?? p.nivel ?? 1)}`;
+    if (p.avatar_id) {
+      const img = $('avatar') as HTMLImageElement;
+      img.src = `/midia/${p.avatar_id}`;
+      img.hidden = false;
+      img.onerror = () => { img.hidden = true; $('avatar-fallback').textContent = (p.display_name || 'N').slice(0, 1).toUpperCase(); };
+      $('avatar-fallback').hidden = true;
+    } else {
+      $('avatar-fallback').textContent = (p.display_name || 'N').slice(0, 1).toUpperCase();
+    }
+  }
+  $('form-perfil').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const r = await fetch(`${api}/api/perfil`, { method: 'PATCH', credentials: 'include', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ display_name: ($('nome') as HTMLInputElement).value.trim(), bio: ($('bio') as HTMLTextAreaElement).value.trim() }) });
+    const j = await r.json().catch(() => ({}));
+    $('hint-perfil').textContent = r.ok ? 'Perfil atualizado.' : (j.erro === 'nome_invalido' ? 'Nome deve ter entre 2 e 40 caracteres.' : 'Não foi possível salvar.');
+  });
+  $('arquivo').addEventListener('change', async (ev) => {
+    const f = (ev.target as HTMLInputElement).files?.[0]; if (!f) return;
+    const r = await fetch(`${api}/api/avatar`, { method: 'POST', credentials: 'include', headers: { 'content-type': f.type }, body: f });
+    $('aviso-avatar').textContent = r.ok ? 'Avatar atualizado.' : 'Falha ao enviar o avatar.';
+    if (r.ok) carregar();
+  });
+  carregar();
+</script>
+</Base>
