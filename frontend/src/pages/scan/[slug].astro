@@ -9,7 +9,7 @@ const { slug } = Astro.params;
     <div class="continue-grid" id="caps"></div>
   </div>
 <script define:vars={{ slug }}>
-  const api = 'http://127.0.0.1:3000';
+  const api = '';
   (async () => {
     const r = await fetch(`${api}/api/scan/${encodeURIComponent(slug)}`);
     if (!r.ok) { document.getElementById('desc')!.textContent = 'Scan não encontrada.'; return; }

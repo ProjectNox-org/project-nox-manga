@@ -14,7 +14,7 @@ import Base from '../layouts/Base.astro';
     <div class="badges-scroll-grid" id="lista"></div>
   </div>
 <script>
-  const api = 'http://127.0.0.1:3000';
+  const api = '';
   const lista = document.getElementById('lista') as HTMLElement;
   async function carregar(tipo: string) {
     const r = await fetch(`${api}/api/ranking?tipo=${tipo}&limit=50`, { credentials: 'include' });

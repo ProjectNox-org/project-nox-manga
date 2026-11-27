@@ -37,7 +37,7 @@ if (!/(?:^|;\s*)nox-auth-token=/.test(_ck)) return Astro.redirect('/entrar', 302
   </div>
 
 <script>
-  const api = 'http://127.0.0.1:3000';
+  const api = '';
   const $ = (id: string) => document.getElementById(id) as HTMLElement;
   async function carregar() {
     const r = await fetch(`${api}/api/perfil`, { credentials: 'include' });

@@ -12,7 +12,7 @@ const { username } = Astro.params;
     <div class="continue-grid" id="stats"></div>
   </div>
 <script define:vars={{ username }}>
-  const api = 'http://127.0.0.1:3000';
+  const api = '';
   (async () => {
     const r = await fetch(`${api}/api/u/${encodeURIComponent(username)}`);
     if (!r.ok) { document.getElementById('sub')!.textContent = 'Perfil não encontrado.'; return; }

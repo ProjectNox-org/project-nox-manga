@@ -22,7 +22,7 @@ if (!/(?:^|;\s*)nox-auth-token=/.test(_ck)) return Astro.redirect('/entrar', 302
   </div>
 
 <script>
-  const api = 'http://127.0.0.1:3000';
+  const api = '';
   const lista = document.getElementById('lista-notif') as HTMLElement;
   const vazio = document.getElementById('vazio-notif') as HTMLElement;
   async function carregar() {

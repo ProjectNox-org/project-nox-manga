@@ -11,7 +11,7 @@ import Base from '../layouts/Base.astro';
     <div class="badges-scroll-grid" id="itens"></div>
   </div>
 <script>
-  const api = 'http://127.0.0.1:3000';
+  const api = '';
   let dados: any = { itens: [] };
   const nomes: Record<string,string> = { TITLE:'Títulos', BADGE:'Emblemas', PROFILE_BANNER:'Banners', BANNER:'Banners', COMMENT_BANNER:'Banners de comentário', MEDAL:'Medalhas', AVATAR_FRAME:'Molduras' };
   function render(cat = '') {

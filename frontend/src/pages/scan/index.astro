@@ -8,7 +8,7 @@ import Base from '../../layouts/Base.astro';
   </div>
 <script>
   (async () => {
-    const r = await fetch('http://127.0.0.1:3000/api/scan');
+    const r = await fetch('/api/scan');
     const j = await r.json();
     (document.getElementById('lista') as HTMLElement).innerHTML = (j.itens || []).map((s: any) => `
       <article class="continue-card">

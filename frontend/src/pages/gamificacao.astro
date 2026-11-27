@@ -24,7 +24,7 @@ if (!/(?:^|;\s*)nox-auth-token=/.test(_ck)) return Astro.redirect('/entrar', 302
     </div>
   </div>
 <script>
-  const api = 'http://127.0.0.1:3000';
+  const api = '';
   (async () => {
     const r = await fetch(api + '/api/gamificacao', { credentials: 'include' });
     if (r.status === 401) { location.href = '/entrar'; return; }

@@ -1,6 +1,6 @@
 ---
 import Base from '../layouts/Base.astro';
-const api = 'http://127.0.0.1:3000';
+const api = '';
 const cookie = Astro.request.headers.get('cookie') || '';
 if (!cookie.includes('nox-auth-token')) return Astro.redirect('/entrar');
 let dados = { itens: [] };
