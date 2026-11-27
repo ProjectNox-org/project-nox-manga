@@ -1,0 +1,51 @@
+---
+interface Props { tipo: string; alvo: string; rotulo?: string }
+const { tipo, alvo, rotulo = 'Denunciar' } = Astro.props;
+---
+<button class="btn-report" type="button" data-tipo={tipo} data-alvo={alvo}>{rotulo}</button>
+<div class="report-overlay" hidden>
+  <form class="report-box" role="dialog" aria-modal="true" aria-labelledby="rep-title">
+    <h2 id="rep-title" class="report-title">Enviar denúncia</h2>
+    <label class="field-label" for="rep-motivo">Motivo</label>
+    <input id="rep-motivo" class="field-input" name="motivo" maxlength="200" required />
+    <label class="field-label" for="rep-det">Detalhes (opcional)</label>
+    <textarea id="rep-det" class="field-textarea" name="detalhes" maxlength="2000"></textarea>
+    <p class="report-msg" hidden></p>
+    <div class="report-actions">
+      <button class="btn-primary-hero" type="submit">Enviar</button>
+      <button class="btn-secondary-hero" type="button" data-fechar>Cancelar</button>
+    </div>
+  </form>
+</div>
+<script is:inline>
+  document.querySelectorAll('.btn-report').forEach((btn) => {
+    const overlay = btn.nextElementSibling;
+    const form = overlay?.querySelector('form');
+    const msg = overlay?.querySelector('.report-msg');
+    btn.addEventListener('click', () => { overlay.hidden = false; });
+    overlay?.querySelector('[data-fechar]')?.addEventListener('click', () => { overlay.hidden = true; });
+    form?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const body = {
+        target_type: btn.dataset.tipo,
+        reason: form.motivo.value.trim(),
+        details: form.detalhes.value.trim(),
+        work_id: btn.dataset.tipo === 'WORK' ? btn.dataset.alvo : undefined,
+        chapter_id: btn.dataset.tipo === 'CHAPTER' ? btn.dataset.alvo : undefined,
+      };
+      const r = await fetch('/api/report', { method: 'POST', headers: { 'content-type': 'application/json' }, credentials: 'include', body: JSON.stringify(body) });
+      msg.hidden = false;
+      msg.textContent = r.ok ? 'Denúncia enviada. Obrigado.' : r.status === 401 ? 'Entre na sua conta para denunciar.' : 'Não foi possível enviar.';
+      if (r.ok) setTimeout(() => { overlay.hidden = true; }, 1200);
+    });
+  });
+</script>
+<style>
+  .btn-report { background: none; border: 0; color: var(--muted); font-size: .8rem; cursor: pointer; text-decoration: underline; padding: .2rem; }
+  .report-overlay { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; background: rgba(3,3,6,.88); padding: 1rem; }
+  .report-overlay[hidden] { display: none; }
+  .report-box { width: 100%; max-width: 420px; padding: 1.2rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); display: grid; gap: .5rem; }
+  .report-title { margin: 0 0 .3rem; font-size: 1.05rem; color: var(--purple); }
+  .report-actions { display: flex; gap: .6rem; margin-top: .4rem; }
+  .report-msg { margin: 0; font-size: .85rem; color: var(--gold); }
+</style>

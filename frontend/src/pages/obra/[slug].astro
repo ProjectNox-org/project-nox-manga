@@ -13,6 +13,8 @@ const capitulos: any[] = caps.itens ?? caps.items ?? [];
 const ultimo = capitulos[0];
 import WorkRating from '../../components/WorkRating.astro';
 import Comments from '../../components/Comments.astro';
+import AgeGateModal from '../../components/AgeGateModal.astro';
+import ReportModal from '../../components/ReportModal.astro';
 ---
 <Base titulo={`${obra.title} · Project Nox`}>
   <Header path="/catalogo" />
@@ -32,6 +34,7 @@ import Comments from '../../components/Comments.astro';
         </div>
         {obra.synopsis ? <p class="obra-sinopse">{obra.synopsis}</p> : null}
         <WorkRating slug={obra.slug} />
+        <ReportModal tipo="WORK" alvo={obra.id} />
         <div class="obra-acoes">
           {ultimo ? <a class="btn-primary-hero" href={`/ler/${ultimo.id}`}>Ler capítulo {ultimo.display_number ?? ultimo.number}</a> : null}
           <a class="btn-secondary-hero" href={`/ler/${capitulos[capitulos.length - 1]?.id ?? ""}`} style={capitulos.length ? "" : "display:none"}>Início</a>
@@ -55,6 +58,7 @@ import Comments from '../../components/Comments.astro';
       )}
     </section>
     <Comments obra={obra.slug} />
+    <AgeGateModal idade={obra.age_rating} />
   </main>
 </Base>
 <style>
