@@ -1,0 +1,16 @@
+---
+import Base from "../layouts/Base.astro";
+import ParticleBackground from "../components/ParticleBackground.astro";
+import HeroCarousel from "../components/HeroCarousel.astro";
+import WorkShelf from "../components/WorkShelf.astro";
+import { homeData } from "../lib/api";
+const { obras, recentes } = await homeData();
+---
+<Base titulo="Project Nox">
+  <ParticleBackground />
+  <main class="home-main">
+    <HeroCarousel obras={obras.slice(0, 5)} />
+    <WorkShelf titulo="Mais populares" obras={obras.slice(0, 12)} />
+    <WorkShelf titulo="Lançamentos recentes" obras={recentes.slice(0, 12)} />
+  </main>
+</Base>

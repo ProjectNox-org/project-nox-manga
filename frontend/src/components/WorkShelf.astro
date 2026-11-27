@@ -1,0 +1,25 @@
+---
+import type { Obra } from "../lib/api";
+import { cover } from "../lib/api";
+interface Props { titulo: string; obras: Obra[]; }
+const { titulo, obras } = Astro.props as Props;
+---
+<section class="shelf">
+  <header class="shelf-head"><h2>{titulo}</h2><a class="shelf-actions" href="/catalogo">ver tudo</a></header>
+  <div class="shelf-track">
+    {obras.map((o) => (
+      <a class="shelf-card" href={`/obra/${o.slug}`}>
+        <div class="card-cover-box">
+          <img class="card-img" src={cover(o.cover_id)} alt={o.title} loading="lazy" width="160" height="230" />
+          <div class="card-glow"></div>
+          {o.kind && <span class="card-kind-badge">{o.kind}</span>}
+          {typeof o.views_total === "number" && <span class="card-views-badge">{o.views_total}</span>}
+        </div>
+        <div class="card-info">
+          <h3 class="card-work-title">{o.title}</h3>
+          <span class="card-status">{o.status ?? ""}</span>
+        </div>
+      </a>
+    ))}
+  </div>
+</section>

@@ -1,0 +1,65 @@
+---
+import type { Obra } from "../lib/api";
+import { cover } from "../lib/api";
+interface Props { obras: Obra[] }
+const { obras } = Astro.props as Props;
+const slides = obras.slice(0, 5);
+---
+{slides.length > 0 && (
+  <section class="hero-carousel" data-hero>
+    <div class="backdrop-wrapper">
+      <img class="backdrop-img" src={cover(slides[0].cover_id)} alt="" />
+      <div class="backdrop-radial-glow"></div>
+    </div>
+    <div class="deck" data-deck>
+      {slides.map((o, i) => (
+        <article class:list={["deck-card", i === 0 && "deck-active"]} data-i={i} data-slug={o.slug} data-syn={o.synopsis ?? ""}>
+          <div class="active-card-inner">
+            <img class="cover-img" src={cover(o.cover_id)} alt={o.title} width="300" height="430" />
+            <div class="cover-gloss"></div>
+            <div class="cover-glare"></div>
+            <div class="cover-edge-accent"></div>
+          </div>
+        </article>
+      ))}
+    </div>
+    <div class="hero-info">
+      <div class="badges-row">
+        <span class="badge-destaque">Destaque</span>
+        {slides[0].kind && <span class="badge-kind">{slides[0].kind}</span>}
+        {slides[0].status && <span class="badge-status">{slides[0].status}</span>}
+        {slides[0].year && <span class="badge-year">{slides[0].year}</span>}
+      </div>
+      <h1 data-hero-title>{slides[0].title}</h1>
+      <p class="hero-syn" data-hero-syn>{slides[0].synopsis ?? ""}</p>
+      <div class="hero-actions">
+        <a class="btn-primary-hero" href={`/obra/${slides[0].slug}`} data-hero-link>Ler agora</a>
+        <a class="btn-secondary-hero" href={`/obra/${slides[0].slug}`}>Ver detalhes</a>
+      </div>
+    </div>
+    <div class="carousel-cinematic-bar"></div>
+  </section>
+)}
+<script>
+  const sec = document.querySelector("[data-hero]") as HTMLElement | null;
+  if (sec) {
+    const cards = Array.from(sec.querySelectorAll<HTMLElement>("[data-i]"));
+    const bg = sec.querySelector<HTMLImageElement>(".backdrop-img");
+    const ti = sec.querySelector<HTMLElement>("[data-hero-title]");
+    const sy = sec.querySelector<HTMLElement>("[data-hero-syn]");
+    const lk = sec.querySelector<HTMLAnchorElement>("[data-hero-link]");
+    let i = 0;
+    const ativar = (n: number) => {
+      cards.forEach((c, k) => c.classList.toggle("deck-active", k === n));
+      const a = cards[n];
+      if (!a) return;
+      const img = a.querySelector("img");
+      if (bg && img) bg.src = img.src;
+      if (ti) ti.textContent = a.querySelector("img")!.alt;
+      if (sy) sy.textContent = a.getAttribute("data-syn") || "";
+      if (lk) lk.href = "/obra/" + a.getAttribute("data-slug");
+    };
+    setInterval(() => { i = (i + 1) % cards.length; ativar(i); }, 7000);
+    cards.forEach((c, k) => c.addEventListener("click", () => { i = k; ativar(k); }));
+  }
+</script>
