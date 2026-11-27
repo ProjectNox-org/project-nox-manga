@@ -49,4 +49,12 @@ const { titulo, subtitulo, obras, verTudo = "/catalogo" } = Astro.props;
   .shelf-card .card-status{ display:none; }
   .shelf-card .card-info{ gap:0; }
   .shelf-card .card-work-title{ margin:0; line-height:1.42; }
+  .shelf-section{ padding-bottom:0; }
+  .shelf-header{ margin-bottom:0; }
+</style>
+
+<style is:global>
+  .shelf-section.shelf-section{ padding-bottom:0; }
+  .home-content .shelf-section{ padding-bottom:0; }
+  .shelf-header.shelf-header{ margin-bottom:0; }
 </style>
