@@ -5,7 +5,7 @@ const API = import.meta.env.NOX_API ?? 'http://127.0.0.1:3000';
 const cookie = Astro.request.headers.get('cookie') ?? '';
 let j:any=null, status=0;
 try{ const r=await fetch(`${API}/api/admin/secao/${secao}`,{headers:cookie?{cookie}:{}}); status=r.status; j=await r.json().catch(()=>null); }catch{}
-const linhas:any[] = Array.isArray(j?.itens)?j.itens:(Array.isArray(j?.dados)?j.dados:(Array.isArray(j?.rows)?j.rows:[]));
+const linhas:any[] = Array.isArray(j)?j:(Array.isArray(j?.itens)?j.itens:(Array.isArray(j?.dados)?j.dados:(Array.isArray(j?.rows)?j.rows:[])));
 const chaves = linhas.length ? Object.keys(linhas[0]) : [];
 ---
 <section class="collection-header"><h1 class="releases-title">{titulo}</h1>
