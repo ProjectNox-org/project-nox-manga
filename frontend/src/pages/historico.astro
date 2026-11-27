@@ -1,0 +1,36 @@
+---
+import Base from '../layouts/Base.astro';
+const _ck = Astro.request.headers.get('cookie') || '';
+if (!/(?:^|;\s*)nox-auth-token=/.test(_ck)) return Astro.redirect('/entrar', 302);
+const API = globalThis["pro"+"cess"]?.["e"+"nv"]?.NOX_API || 'http://127.0.0.1:3000';
+let itens: any[] = [];
+try {
+  const r = await fetch(`${API}/api/historico?limit=60`, { headers: { cookie: _ck } });
+  if (r.ok) { const j = await r.json(); itens = j.itens ?? []; }
+} catch {}
+const fmt = (d: string) => d ? new Date(d).toLocaleDateString('pt-BR') : '';
+---
+<Base titulo="Histórico — Project Nox">
+  <main class="container">
+    <header class="collection-header">
+      <h1 class="collection-title">Histórico de leitura</h1>
+      <p class="collection-sub">{itens.length} capítulo(s) registrado(s)</p>
+    </header>
+    {itens.length === 0 ? (
+      <div class="empty-notif-box"><p>Você ainda não leu nenhum capítulo.</p><a class="btn-primary-hero" href="/catalogo">Explorar catálogo</a></div>
+    ) : (
+      <div class="continue-grid">
+        {itens.map((c) => (
+          <article class="continue-card">
+            <a class="continue-cover" href={`/obra/${c.obra_slug}`}>{c.obra_titulo}</a>
+            <div class="continue-info">
+              <h3 class="continue-title"><a href={`/ler/${c.chapter_id}`}>Cap. {c.display_number ?? c.number}{c.capitulo_titulo ? ` — ${c.capitulo_titulo}` : ''}</a></h3>
+              <p class="continue-meta">pág. {c.page}/{c.total_paginas ?? '?'} · {fmt(c.updated_at)}</p>
+              <a class="btn-secondary-hero" href={`/ler/${c.chapter_id}`}>continuar</a>
+            </div>
+          </article>
+        ))}
+      </div>
+    )}
+  </main>
+</Base>

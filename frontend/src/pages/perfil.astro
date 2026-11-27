@@ -1,5 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
+const _ck = Astro.request.headers.get('cookie') || '';
+if (!/(?:^|;\s*)nox-auth-token=/.test(_ck)) return Astro.redirect('/entrar', 302);
 ---
 <Base title="Meu perfil">
   <div class="container spacer-bottom">

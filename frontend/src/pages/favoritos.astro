@@ -9,6 +9,8 @@ try {
   if (r.ok) dados = await r.json();
 } catch {}
 const itens = (dados.itens || []).filter((i) => i.favorite === true || i.favorito === true);
+const _ck = Astro.request.headers.get('cookie') || '';
+if (!/(?:^|;\s*)nox-auth-token=/.test(_ck)) return Astro.redirect('/entrar', 302);
 ---
 <Base titulo="Favoritos — Project Nox">
   <section class="collection-header">
