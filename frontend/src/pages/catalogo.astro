@@ -8,7 +8,7 @@ const kind = url.searchParams.get("kind") ?? "";
 const status = url.searchParams.get("status") ?? "";
 const sort = url.searchParams.get("sort") ?? "recentes";
 const page = Math.max(1, Number(url.searchParams.get("page") ?? 1));
-const limit = 24;
+const limit = 20;
 const qs = new URLSearchParams({ limit: String(limit), offset: String((page - 1) * limit), sort });
 if (q) qs.set("q", q);
 if (kind) qs.set("kind", kind);
@@ -57,7 +57,7 @@ const link = (patch: Record<string, string | number>) => {
     {itens.length === 0 ? (
       <p class="empty">Nenhuma obra encontrada.</p>
     ) : (
-      <div class="grid editorial-grid">
+      <div class="editorial-grid">
         {itens.map((w) => (
           <a class="editorial-card" href={`/obra/${w.slug}`}>
             <div class="card-media">
@@ -102,11 +102,11 @@ const link = (patch: Record<string, string | number>) => {
 
 <style is:global>
 /* NOX-CATALOGO-FIEL: igualar grade e proporcao ao legado */
-.editorial-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:22px;align-items:start}
-@media (max-width:1200px){.editorial-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
-@media (max-width:900px){.editorial-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media (max-width:640px){.editorial-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}}
-.editorial-card{padding:0}
-.editorial-card .card-media{aspect-ratio:254/362;width:100%;height:auto}
+.editorial-grid.editorial-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:0; justify-content:space-between;align-items:start}
+@media (max-width:1200px){.editorial-grid.editorial-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media (max-width:900px){.editorial-grid.editorial-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:640px){.editorial-grid.editorial-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}}
+.editorial-card.editorial-card{padding:0}
+.editorial-card.editorial-card .card-media{aspect-ratio:254/362;width:100%;height:auto}
 .editorial-card .card-img{width:100%;height:100%;object-fit:cover;display:block}
 </style>
