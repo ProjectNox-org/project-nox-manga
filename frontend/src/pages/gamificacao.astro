@@ -1,0 +1,38 @@
+---
+import Base from '../layouts/Base.astro';
+---
+<Base title="Gamificação">
+  <div class="container spacer-bottom">
+    <section class="collection-header">
+      <h1 class="collection-title">Sua jornada</h1>
+      <p class="collection-sub" id="nivel">Carregando…</p>
+    </section>
+    <div class="continue-grid">
+      <article class="continue-card">
+        <h2 class="edit-card-title">Progresso de XP</h2>
+        <p class="edit-card-sub" id="xp">—</p>
+        <div role="progressbar" aria-valuemin="0" aria-valuemax="100" style="height:10px;background:#1b1d2a;border-radius:999px;overflow:hidden">
+          <div id="barra" style="height:100%;width:0;background:linear-gradient(90deg,#b59af5,#c9aa73)"></div>
+        </div>
+      </article>
+      <article class="continue-card">
+        <h2 class="edit-card-title">Estatísticas</h2>
+        <p class="edit-card-sub" id="stats">—</p>
+      </article>
+    </div>
+  </div>
+<script>
+  const api = 'http://127.0.0.1:3000';
+  (async () => {
+    const r = await fetch(api + '/api/gamificacao', { credentials: 'include' });
+    if (r.status === 401) { location.href = '/entrar'; return; }
+    const j = await r.json();
+    document.getElementById('nivel')!.textContent = `Nível ${j.nivel}`;
+    document.getElementById('xp')!.textContent = `${j.xp} XP · faltam ${j.xp_proximo_nivel} XP para o próximo nível`;
+    document.getElementById('stats')!.textContent = `${j.capitulos_concluidos} capítulos concluídos · ${j.obras_na_biblioteca} obras na biblioteca · ${j.comentarios} comentários`;
+    const base = 50 * Math.pow(j.nivel - 1, 2), topo = 50 * Math.pow(j.nivel, 2);
+    const pct = Math.max(0, Math.min(100, ((j.xp - base) / (topo - base)) * 100));
+    (document.getElementById('barra') as HTMLElement).style.width = pct.toFixed(1) + '%';
+  })();
+</script>
+</Base>
