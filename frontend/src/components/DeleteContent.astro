@@ -1,0 +1,16 @@
+---
+const { url, tipo = "conteudo", recarregar = true } = Astro.props;
+---
+<button class="btn-del" data-url={url} data-recarregar={recarregar ? "1" : "0"}>
+  Excluir {tipo}
+</button>
+<script is:inline>
+  document.querySelectorAll('.btn-del').forEach((b) => {
+    b.addEventListener('click', async () => {
+      if (!confirm('Confirmar exclusão?')) return;
+      const r = await fetch(b.dataset.url, { method: 'DELETE' });
+      if (r.ok && b.dataset.recarregar === '1') location.reload();
+      else if (!r.ok) b.textContent = 'Falha ao excluir';
+    });
+  });
+</script>

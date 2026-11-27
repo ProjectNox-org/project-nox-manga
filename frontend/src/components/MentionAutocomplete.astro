@@ -1,0 +1,18 @@
+---
+const { alvo = "textarea", limite = 6 } = Astro.props;
+---
+<datalist class="mencao-lista" data-alvo={alvo}></datalist>
+<script is:inline>
+  const lista = document.querySelector('.mencao-lista');
+  const campo = document.querySelector(lista?.dataset.alvo === 'input' ? 'input[data-mencao]' : 'textarea');
+  if (campo) {
+    campo.addEventListener('input', async () => {
+      const m = campo.value.match(/@([\w.-]{2,})$/);
+      if (!m) return;
+      const r = await fetch('/api/mentions/search?q=' + encodeURIComponent(m[1]));
+      const j = await r.json().catch(() => ({}));
+      lista.innerHTML = (j.itens ?? j.items ?? []).slice(0, 6)
+        .map((u) => '<option value="@' + (u.username ?? u.name) + '">').join('');
+    });
+  }
+</script>

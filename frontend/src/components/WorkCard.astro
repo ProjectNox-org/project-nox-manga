@@ -1,0 +1,21 @@
+---
+const { obra, classe = "" } = Astro.props;
+const fmt = (n:any) => n >= 1e6 ? (n/1e6).toFixed(1)+"M" : n >= 1e3 ? (n/1e3).toFixed(1)+"k" : String(n ?? 0);
+const q = (s:any) => String(s ?? "").toLowerCase();
+---
+<a class={`editorial-card ${classe}`} href={`/obra/${obra.slug}`}>
+  <div class="card-media">
+    {obra.cover_id ? <img class="card-img" src={`/midia/${obra.cover_id}`} alt={obra.title} loading="lazy" /> : <div class="card-img"></div>}
+    <div class="card-gradient"></div>
+    <span class="card-views-top-left">{fmt(obra.views_total)}</span>
+    {obra.kind && <span class="kind-chip">{obra.kind}</span>}
+    {obra.is_adult && <span class="adult-badge-bottom-left">+18</span>}
+  </div>
+  <div class="card-meta">
+    <h3 class="card-title">{obra.title}</h3>
+    <p class="card-sub">
+      {obra.status && <span class="card-status">{obra.status}</span>}
+      {obra.year && <><span class="meta-dot">·</span><span class="card-year">{obra.year}</span></>}
+    </p>
+  </div>
+</a>

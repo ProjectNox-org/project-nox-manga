@@ -12,6 +12,7 @@ const caps: any = capsRes.ok ? await capsRes.json() : { itens: [] };
 const capitulos: any[] = caps.itens ?? caps.items ?? [];
 const ultimo = capitulos[0];
 import WorkRating from '../../components/WorkRating.astro';
+import BatchChapterModal from '../../components/BatchChapterModal.astro';
 import Comments from '../../components/Comments.astro';
 import AgeGateModal from '../../components/AgeGateModal.astro';
 import ReportModal from '../../components/ReportModal.astro';
@@ -57,7 +58,8 @@ import ReportModal from '../../components/ReportModal.astro';
         </ul>
       )}
     </section>
-    <Comments obra={obra.slug} />
+    <BatchChapterModal slug={obra.slug} total={capitulos?.length ?? 0} />
+  <Comments obra={obra.slug} />
     <AgeGateModal idade={obra.age_rating} />
   </main>
 </Base>
