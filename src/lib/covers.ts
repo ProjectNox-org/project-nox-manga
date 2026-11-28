@@ -26,10 +26,20 @@ export function resolveOriginalCoverUrl(src: string): string {
     const url = new URL(src, 'https://project-nox.invalid');
     url.searchParams.delete('size');
     url.searchParams.delete('v');
+    url.searchParams.delete('w');
     return url.origin === 'https://project-nox.invalid'
       ? `${url.pathname}${url.search}`
       : url.toString();
   } catch {
-    return src.replace(/[?&]size=(?:thumb|hero)/, '').replace(/[?&]v=\d+/, '');
+    return src.replace(/[?&]size=(?:thumb|hero)/, '').replace(/[?&]v=\d+/, '').replace(/[?&]w=\d+/, '');
   }
+}
+
+/** Wider webp variant of the canonical cover, served by the media gateway (?w=). */
+export function coverVariantUrl(coverId?: string | null, width = 650, version = 3): string | null {
+  if (!coverId || typeof coverId !== 'string') return null;
+  const trimmed = coverId.trim();
+  if (!trimmed || trimmed.startsWith('/') || trimmed.startsWith('http')) return null;
+  const w = [325, 650, 750, 900].includes(width) ? width : 650;
+  return `/media/${trimmed}?v=${version}&w=${w}`;
 }

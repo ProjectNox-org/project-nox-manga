@@ -13,7 +13,7 @@
   import type { Work } from '$lib/types';
   import { kindLabels } from '$lib/types';
   import { page } from '$app/state';
-  import { resolveCoverUrl, resolveOriginalCoverUrl } from '$lib/covers';
+  import { resolveCoverUrl, resolveOriginalCoverUrl, coverVariantUrl } from '$lib/covers';
   import { decodeHtmlEntities } from '$lib/html-entities';
 
   type Props = {
@@ -57,6 +57,11 @@
   let nextWork = $derived(
     works.length > 1 ? works[(currentIndex + 1) % works.length] : null
   );
+
+  function heroVariant(width: number): string | null {
+    const work: any = currentWork;
+    return coverVariantUrl(work?.cover_id || work?.coverId, width);
+  }
 
   let heroCover = $derived(
     currentWork
@@ -105,7 +110,9 @@
 
   function fallbackCover(node: HTMLImageElement) {
     const onError = () => {
-      if (node.src.includes('size=thumb') || node.src.includes('size=hero')) {
+      node.removeAttribute('srcset');
+      node.removeAttribute('sizes');
+      if (node.src.includes('size=thumb') || node.src.includes('size=hero') || /[?&]w=\d+/.test(node.src)) {
         node.src = resolveOriginalCoverUrl(node.src);
       } else if (!node.src.includes('/brand/nox-symbol.webp')) {
         node.src = '/brand/nox-symbol.webp?v=3';
@@ -302,7 +309,7 @@
 
 <svelte:head>
   {#if heroCover}
-    <link rel="preload" as="image" href={heroCover} fetchpriority="high" />
+    <link rel="preload" as="image" href={heroVariant(650) ?? heroCover} imagesrcset={`${heroVariant(325) ?? heroCover} 325w, ${heroVariant(650) ?? heroCover} 650w`} imagesizes="(max-width: 640px) 260px, 325px" fetchpriority="high" />
   {/if}
   {#if nextCover}
     <link rel="preload" as="image" href={nextCover} />
@@ -378,7 +385,9 @@
                 aria-label={`Ler obra em destaque: ${decodeHtmlEntities(currentWork.title)}`}
               >
                 <img
-                  src={heroCover}
+                  src={heroVariant(650) ?? heroCover}
+                  srcset={`${heroVariant(325) ?? heroCover} 325w, ${heroVariant(650) ?? heroCover} 650w`}
+                  sizes="(max-width: 640px) 260px, 325px"
                   alt={decodeHtmlEntities(currentWork.title)}
                   class="cover-img"
                   class:blurred-cover={effectiveBlur}
