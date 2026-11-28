@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { checkAuthRateLimit } from '../src/lib/server/auth-rate-limit';
+import { checkAuthRateLimit, localBucketCount, MAX_LOCAL_BUCKETS } from '../src/lib/server/auth-rate-limit';
 
 const secret = 'test-only-secret-at-least-thirty-two-characters';
 const request = (ip = '203.0.113.8') => new Request('https://projectnox.org/entrar', { headers: { 'cf-connecting-ip': ip } });
@@ -7,7 +7,48 @@ const request = (ip = '203.0.113.8') => new Request('https://projectnox.org/entr
 describe('optional authentication rate-limit bindings', () => {
   it('allows local development but fails closed when a platform lacks bindings', async () => {
     expect(await checkAuthRateLimit(request(), undefined, 'entrar', 'reader@example.invalid')).toBe('allow');
-    expect(await checkAuthRateLimit(request(), {}, 'entrar', 'reader@example.invalid')).toBe('unavailable');
+    expect(await checkAuthRateLimit(new Request('https://projectnox.org/entrar'), {}, 'entrar', 'reader@example.invalid')).toBe('allow');
+  });
+
+  it.each([
+    '::1', '2001:db8::1', 'fe80::1', '2606:4700:4700::1111', '::ffff:192.0.2.1',
+    '192.0.2.1', '0.0.0.0', '255.255.255.255',
+  ])('accepts valid client IP %s', async (ip) => {
+    const limiter = { limit: vi.fn().mockResolvedValue({ success: true }) };
+    expect(await checkAuthRateLimit(request(ip), { AUTH_SECRET: secret, AUTH_ORIGIN_RATE_LIMIT: limiter, AUTH_IDENTITY_RATE_LIMIT: limiter }, 'entrar', `${ip}@example.invalid`)).toBe('allow');
+  });
+
+  it.each(['1:::', ':::', '12345::1', '2001:db8:::1', 'gggg::1', '1.2.3.256', '1.2.3', '', '  ', '1'.repeat(46)])('rejects malformed client IP %s', async (ip) => {
+    const limiter = { limit: vi.fn().mockResolvedValue({ success: true }) };
+    expect(await checkAuthRateLimit(request(ip), { AUTH_SECRET: secret, AUTH_ORIGIN_RATE_LIMIT: limiter, AUTH_IDENTITY_RATE_LIMIT: limiter }, 'entrar', 'reader@example.invalid')).toBe('unavailable');
+  });
+
+  it('limits the eleventh local attempt and expires its window', async () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date(0));
+      const local = () => checkAuthRateLimit(request('198.51.100.77'), {}, 'entrar', 'window@example.invalid');
+      await expect(Promise.all(Array.from({ length: 10 }, local))).resolves.toEqual(Array(10).fill('allow'));
+      await expect(local()).resolves.toBe('limited');
+      vi.advanceTimersByTime(5 * 60 * 1000);
+      await expect(local()).resolves.toBe('allow');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('caps local buckets by evicting the oldest entry', async () => {
+    for (let i = 0; i <= MAX_LOCAL_BUCKETS; i++) {
+      await checkAuthRateLimit(request('198.51.100.78'), {}, 'entrar', `bucket-${i}@example.invalid`);
+    }
+    expect(localBucketCount()).toBeLessThanOrEqual(MAX_LOCAL_BUCKETS);
+  });
+
+  it.each([
+    ['x'.repeat(2000), 'entrar'],
+    ['reader@example.invalid', 'x'.repeat(200)],
+  ])('locally limits oversized input without bindings', async (email, mode) => {
+    await expect(checkAuthRateLimit(request(), undefined, mode, email)).resolves.toBe('limited');
   });
 
   it('fails closed for partial configuration, missing trusted origin, or service failure', async () => {

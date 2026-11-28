@@ -3,6 +3,74 @@ import { getAuthSecret } from '$lib/server/yugabyte-auth';
 type Limiter = { limit(input: { key: string }): Promise<{ success: boolean }> };
 type Decision = 'allow' | 'limited' | 'unavailable';
 
+const LOCAL_WINDOW_MS = 5 * 60 * 1000;
+const LOCAL_ORIGIN_MAX = 60;
+const LOCAL_SUBJECT_MAX = 10;
+const UNATTRIBUTABLE_ORIGIN_MAX = 30;
+const UNATTRIBUTABLE_SUBJECT_MAX = 5;
+export const MAX_LOCAL_BUCKETS = 10_000;
+const localHits = new Map<string, number[]>();
+
+const IPV4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
+const HEX_GROUP = /^[0-9a-f]{1,4}$/i;
+
+function isIpv4(ip: string): boolean {
+  const octets = IPV4.exec(ip)?.slice(1);
+  return !!octets && octets.every((octet) => Number(octet) <= 255);
+}
+
+function isIpv6(ip: string): boolean {
+  if (ip.includes(':::') || (ip.match(/::/g)?.length ?? 0) > 1) return false;
+  const compressed = ip.includes('::');
+  const groups = ip.split(':').filter(Boolean);
+  if (!groups.length) return compressed;
+  const ipv4 = groups.at(-1)?.includes('.');
+  if (ipv4 && !isIpv4(groups.pop()!)) return false;
+  const count = groups.length + (ipv4 ? 2 : 0);
+  return groups.every((group) => HEX_GROUP.test(group)) && (compressed ? count < 8 : count === 8);
+}
+
+function parseIp(raw: string | null | undefined): string | undefined {
+  const ip = raw?.trim();
+  if (!ip || ip.length > 45 || (!isIpv4(ip) && !isIpv6(ip))) return undefined;
+  return ip.toLowerCase();
+}
+
+// Non-loopback peers are only reachable through nginx/cloudflared, so these
+// headers are set upstream. Values are still validated: a malformed header
+// must not become an attacker-controlled bucket key.
+function clientIp(request: Request): string | undefined {
+  const headers = request.headers;
+  return parseIp(headers?.get('cf-connecting-ip')) ?? parseIp(headers?.get('x-real-ip'));
+}
+
+function localAllow(ip: string | undefined, mode: string, email: string, now = Date.now()): boolean {
+  const key = ip ?? 'unattributable';
+  const originMax = ip ? LOCAL_ORIGIN_MAX : UNATTRIBUTABLE_ORIGIN_MAX;
+  const subjectMax = ip ? LOCAL_SUBJECT_MAX : UNATTRIBUTABLE_SUBJECT_MAX;
+  const buckets: Array<[string, number]> = [
+    [`origin:${key}`, originMax],
+    [`subject:${mode}:${key}:${email.trim().toLowerCase()}`, subjectMax],
+  ];
+  const fresh = buckets.map(([key]) => (localHits.get(key) ?? []).filter((t) => now - t < LOCAL_WINDOW_MS));
+  const blocked = fresh.some((stamps, i) => stamps.length >= buckets[i][1]);
+  if (!blocked) buckets.forEach(([key], i) => {
+    if (!localHits.has(key) && localHits.size >= MAX_LOCAL_BUCKETS) {
+      for (const [oldKey, stamps] of localHits) if (!stamps.some((t) => now - t < LOCAL_WINDOW_MS)) localHits.delete(oldKey);
+      // Map insertion order makes the oldest bucket the least recently added fallback eviction.
+      if (localHits.size >= MAX_LOCAL_BUCKETS) localHits.delete(localHits.keys().next().value!);
+    }
+    fresh[i].push(now);
+    localHits.set(key, fresh[i]);
+  });
+  if (localHits.size > 5000) {
+    for (const [key, stamps] of localHits) if (!stamps.some((t) => now - t < LOCAL_WINDOW_MS)) localHits.delete(key);
+  }
+  return !blocked;
+}
+
+export const localBucketCount = () => localHits.size;
+
 /**
  * Optional Cloudflare rate-limit bindings. These counters are approximate and
  * local to each Cloudflare location; they are not a global security boundary.
@@ -14,18 +82,23 @@ export async function checkAuthRateLimit(
   mode: string,
   email: string
 ): Promise<Decision> {
+  if (email.length > 1024 || mode.length > 64) return 'limited';
   const origin: Limiter | undefined = env?.AUTH_ORIGIN_RATE_LIMIT;
   const identity: Limiter | undefined = env?.AUTH_IDENTITY_RATE_LIMIT;
   // Local development may not provide a platform environment. A deployed
   // Worker must not silently lose its abuse guard if bindings are absent.
-  if (!origin && !identity) return env ? 'unavailable' : 'allow';
+  if (!origin && !identity) {
+    // adapter-node has no Cloudflare bindings; a missing binding must not make
+    // every login fail. Guard with a process-local sliding window instead.
+    return localAllow(clientIp(request), mode, email) ? 'allow' : 'limited';
+  }
   if (typeof origin?.limit !== 'function' || typeof identity?.limit !== 'function') return 'unavailable';
 
   // Cloudflare supplies this header. Do not trust X-Forwarded-For, which a
   // client may control. A missing trusted origin must not silently disable a
   // configured limiter.
-  const ip = request.headers?.get('cf-connecting-ip')?.trim();
-  if (!ip || ip.length > 64 || email.length > 1024 || mode.length > 64) return 'unavailable';
+  const ip = clientIp(request);
+  if (!ip || ip.length > 64) return 'unavailable';
 
   try {
     const secret = getAuthSecret(env);
