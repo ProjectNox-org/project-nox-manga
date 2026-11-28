@@ -12,12 +12,10 @@ export function resolveCoverUrl(
   if (coverId && typeof coverId === 'string' && coverId.trim()) {
     const trimmed = coverId.trim();
     if (trimmed.startsWith('/') || trimmed.startsWith('http')) return trimmed;
-    const size = typeof options === 'string' ? options : options?.size;
-    // Versioned variants prevent browsers/edge POPs from reusing the old
-    // corrupted thumbnail namespace. The media endpoint canonicalizes the
-    // same version even when older callers omit it.
-    const query = size === 'thumb' || size === 'hero' ? `?size=${size}&v=3` : '';
-    return `/media/${trimmed}${query}`;
+    // CACHE_KEY_UNICO: o endpoint de midia devolve o mesmo objeto para
+    // thumb/hero/full; um unico URL por midia evita baixar a mesma capa duas
+    // vezes (hero + thumb) e aproveita o cache imutavel do navegador.
+    return `/media/${trimmed}?v=3`;
   }
   return '/brand/nox-symbol.webp?v=3';
 }

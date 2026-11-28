@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { SvelteSet } from 'svelte/reactivity';
   import {
     BookOpen,
@@ -80,6 +80,21 @@
     return qualifiers.length ? `${number} · ${qualifiers.join(' · ')}` : number;
   }
 
+  function maybeRevalidateViews() {
+    try {
+      const marker = sessionStorage.getItem('nox:view-counted');
+      if (!marker) return;
+      const parsed = JSON.parse(marker) as { workId?: string; ts?: number };
+      const fresh = typeof parsed.ts === 'number' && Date.now() - parsed.ts < 30 * 60 * 1000;
+      if (fresh && parsed.workId && parsed.workId === data.work.id) {
+        sessionStorage.removeItem('nox:view-counted');
+        void invalidateAll();
+      }
+    } catch {
+      /* revalidacao best-effort */
+    }
+  }
+
   onMount(async () => {
     // Volta do leitor: o SvelteKit restaura a posicao da entrada de historico e pode
     // cair no fim da pagina. Se esta obra veio do leitor, fixa o topo ate o usuario interagir.
@@ -108,19 +123,19 @@
         requestAnimationFrame(holdTop);
       }
     }
-    try {
-      const marker = sessionStorage.getItem('nox:view-counted');
-      if (marker) {
-        const parsed = JSON.parse(marker) as { workId?: string; ts?: number };
-        const fresh = typeof parsed.ts === 'number' && Date.now() - parsed.ts < 30 * 60 * 1000;
-        if (fresh && parsed.workId && parsed.workId === data.work.id) {
-          sessionStorage.removeItem('nox:view-counted');
-          await invalidateAll();
-        }
-      }
-    } catch {
-      /* revalidacao best-effort */
-    }
+    maybeRevalidateViews();
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) maybeRevalidateViews();
+    };
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') maybeRevalidateViews();
+    };
+    window.addEventListener('pageshow', onPageShow);
+    document.addEventListener('visibilitychange', onVisible);
+    onDestroy(() => {
+      window.removeEventListener('pageshow', onPageShow);
+      document.removeEventListener('visibilitychange', onVisible);
+    });
     if (isOfflineSupported()) {
       try {
         const offlineList = await getOfflineChapters();
