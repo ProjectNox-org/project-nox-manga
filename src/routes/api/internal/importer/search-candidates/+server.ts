@@ -74,7 +74,7 @@ export const GET = async ({ url, locals, platform }: any) => {
            (SELECT json_agg(json_build_object('source', m.source, 'source_work_id', m.source_work_id, 'source_slug', m.source_slug, 'metadata', m.metadata))
             FROM importer_work_mappings m WHERE m.work_id = w.id) AS importer_work_mappings
     FROM works w
-    WHERE w.title ILIKE $1 OR w.slug ILIKE $1
+    WHERE w.search_text ILIKE $1 OR w.title ILIKE $1 OR w.slug ILIKE $1
     LIMIT 10;
   `, [searchPattern], platform?.env).catch(() => ({ rows: [] }));
 
