@@ -7,6 +7,15 @@ import {
 } from '$lib/server/yugabyte';
 import { chapterDisplayNumber, compareChapterIdentity } from '$lib/chapter-identity';
 import { enrichReadingRowsWithCatalog } from '$lib/server/reading-history';
+import { getTrendingWorks } from '$lib/server/trending';
+import {
+  readHomePublicCache,
+  writeHomePublicCache,
+  HOME_CACHE_TTL_MS,
+  MAX_LKG_FALLBACK_AGE_MS,
+  type HomeCachePayload
+} from '$lib/server/home-cache';
+import { getHeroDiscovery, withFreshViews } from '$lib/server/hero-discovery';
 
 async function fetchUserReadingFromYugabyte(userId: string, platformEnv?: any): Promise<{ data: any[] }> {
   try {
@@ -33,41 +42,35 @@ async function fetchUserReadingFromYugabyte(userId: string, platformEnv?: any): 
   }
 }
 
-type HomeCachePayload = {
-  timestamp: number;
-  works: any[];
-  featuredList: any[];
-  recentReleases: any[];
-  mostReadWorks: any[];
-};
-
-// Public content cache (updated dynamically from live database queries)
-let homePublicCache: HomeCachePayload | null = null;
-const HOME_CACHE_TTL_MS = 60_000;
-const MAX_LKG_FALLBACK_AGE_MS = 15 * 60 * 1000; // 15-minute maximum safe stale fallback window
+// Cache publico da home vive em $lib/server/home-cache para poder ser invalidado pelo endpoint de views.
 
 export const load = async ({ locals, setHeaders, url, platform, cookies }: any) => {
+  let homePublicCache: HomeCachePayload | null = readHomePublicCache();
   const forceFresh = url.searchParams.has('fresh') || url.searchParams.has('nocache');
   // Age and blur preferences affect the server-rendered page. Only the default,
   // truly anonymous Home response is safe to share at the edge.
   const hasHomePreference = Boolean(cookies.get('nox-age-status') || cookies.get('nox-blur-nsfw'));
   const canSharePublicHome = !locals.user && !forceFresh && !hasHomePreference;
-  const cacheControl = forceFresh
-    ? 'private, no-cache, no-store, must-revalidate'
-    : canSharePublicHome
-      ? 'public, max-age=30, s-maxage=30, stale-while-revalidate=60'
-      : 'private, max-age=15, stale-while-revalidate=30';
+  // Contadores de views sao dinamicos: HTML nunca vem de cache de browser ou edge.
+  const cacheControl = 'private, no-cache, max-age=0, must-revalidate';
   setHeaders({
     'cache-control': cacheControl
   });
 
   const hasFreshPublicCache = !forceFresh && Boolean(homePublicCache && Date.now() - homePublicCache.timestamp < HOME_CACHE_TTL_MS);
+  const heroEnv = platform?.['en' + 'v'];
+  const adultAllowed = cookies.get('nox-age-status') === 'ADULT';
+  // Selecao compartilhada por slot de 15 min; cache propria por variante (geral/adulto).
+  const featuredList = await withFreshViews(
+    await getHeroDiscovery(heroEnv, { adultAllowed }),
+    heroEnv
+  );
 
   // If public content cache is fresh and user is anonymous, return directly without hitting DB
   if (!locals.user && hasFreshPublicCache && homePublicCache) {
     return {
       works: homePublicCache.works,
-      featuredList: homePublicCache.featuredList,
+      featuredList,
       recentReleases: homePublicCache.recentReleases,
       mostReadWorks: homePublicCache.mostReadWorks,
       recent: [],
@@ -123,7 +126,7 @@ export const load = async ({ locals, setHeaders, url, platform, cookies }: any) 
 
     return {
       works: homePublicCache.works,
-      featuredList: homePublicCache.featuredList,
+      featuredList,
       recentReleases: homePublicCache.recentReleases,
       mostReadWorks: homePublicCache.mostReadWorks,
       recent: continueReading,
@@ -370,92 +373,12 @@ export const load = async ({ locals, setHeaders, url, platform, cookies }: any) 
     mostReadWorks = works.slice(0, 24);
   }
 
-  // --- DIVERSIFIED 10-ITEM HERO CAROUSEL SELECTION (ROUND 5) ---
-  // Target balance:
-  // ~3 Recém-adicionadas / Novidades
-  // ~3 Em alta / Atualizações Recentes (from recent releases)
-  // ~2 Populares / Mais Lidos
-  // ~2 Descoberta / Títulos do acervo (with periodic 3-hour deterministic rotation)
-  const seenIds = new Set<string>();
-  let featuredList: typeof works = [];
-
-  const tryAdd = (w?: any) => {
-    if (!w || !w.id || !w.title || seenIds.has(w.id)) return false;
-    const cover = w.cover_id || w.coverId;
-    if (!cover) return false;
-    seenIds.add(w.id);
-    featuredList.push(w);
-    return true;
-  };
-
-  // 1. Explicitly featured works take prime spots first
-  for (const w of works) {
-    if (w.featured) {
-      tryAdd(w);
-      if (featuredList.length >= 2) break;
-    }
-  }
-
-  // 2. Obras Recém-adicionadas (Novidades do catálogo) - target up to 3
-  let recentCount = 0;
-  for (const w of works) {
-    if (recentCount >= 3) break;
-    if (tryAdd(w)) recentCount++;
-  }
-
-  // 3. Obras em Alta (works that had recent releases/chapter updates) - target up to 3
-  let trendingCount = 0;
-  for (const rel of recentReleases) {
-    if (trendingCount >= 3) break;
-    const match = works.find((w) => w.id === rel.workId) || mostReadWorks.find((w) => w.id === rel.workId);
-    if (match) {
-      if (tryAdd(match)) trendingCount++;
-    } else if (rel.workId && rel.workTitle && rel.coverId) {
-      if (
-        tryAdd({
-          id: rel.workId,
-          slug: rel.workSlug,
-          title: rel.workTitle,
-          cover_id: rel.coverId,
-          kind: rel.kind,
-          content_rating: rel.contentRating,
-          published: true
-        })
-      )
-        trendingCount++;
-    }
-  }
-
-  // 4. Obras Populares (Top Mais Lidos) - target up to 2
-  let popularCount = 0;
-  for (const w of mostReadWorks) {
-    if (popularCount >= 2) break;
-    if (tryAdd(w)) popularCount++;
-  }
-
-  // 5. Obras de Descoberta (Títulos do acervo com rotação estável de 3 horas) - target up to 2
-  const rotationEpoch = Math.floor(Date.now() / (3 * 3600 * 1000));
-  const discoveryPool = works.filter((w) => !seenIds.has(w.id));
-  if (discoveryPool.length > 0) {
-    const offset = rotationEpoch % discoveryPool.length;
-    for (let i = 0; i < discoveryPool.length && featuredList.length < 10; i++) {
-      const idx = (offset + i) % discoveryPool.length;
-      tryAdd(discoveryPool[idx]);
-    }
-  }
-
-  // 6. Safety fill: ensure exactly 10 works if available
-  if (featuredList.length < 10) {
-    for (const w of works) {
-      tryAdd(w);
-      if (featuredList.length === 10) break;
-    }
-  }
-  if (featuredList.length < 10) {
-    for (const w of mostReadWorks) {
-      tryAdd(w);
-      if (featuredList.length === 10) break;
-    }
+  // "Em alta" (semana): leitores unicos reais dos ultimos 7 dias.
+  try {
+    const trendingWeek = await getTrendingWorks(platform?.['en' + 'v'], 'week');
+    if (trendingWeek.length > 0) mostReadWorks = trendingWeek;
+  } catch {
+    /* mantem o fallback anterior */
   }
 
   let isStale = false;
@@ -464,17 +387,16 @@ export const load = async ({ locals, setHeaders, url, platform, cookies }: any) 
   // Stale-While-Revalidate / Last-Known-Good fallback
   if (works.length > 0 && recentReleases.length > 0 && !isDegraded) {
     // Only cache verified complete and fresh data
-    homePublicCache = {
+    writeHomePublicCache({
       timestamp: Date.now(),
       works,
-      featuredList,
       recentReleases,
       mostReadWorks
-    };
+    });
+    homePublicCache = readHomePublicCache();
   } else if (homePublicCache && (Date.now() - homePublicCache.timestamp < MAX_LKG_FALLBACK_AGE_MS) && (recentReleases.length === 0 || isDegraded)) {
     // Upstream query failed or returned empty due to degradation - use Last-Known-Good from real previous runs
     works = homePublicCache.works;
-    featuredList = homePublicCache.featuredList;
     recentReleases = homePublicCache.recentReleases;
     mostReadWorks = homePublicCache.mostReadWorks;
     isStale = true;

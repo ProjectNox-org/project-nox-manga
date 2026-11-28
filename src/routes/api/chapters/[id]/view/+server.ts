@@ -1,5 +1,7 @@
 import { json } from '@sveltejs/kit';
-import { executeYugabyteSql, withYugabyteReadSession } from '$lib/server/yugabyte';
+import { executeYugabyteSql, withYugabyteReadSession, invalidateYugabyteLkgPrefix } from '$lib/server/yugabyte';
+import { invalidateHomePublicCache } from '$lib/server/home-cache';
+import { invalidateTrendingCache } from '$lib/server/trending';
 
 async function hashString(str: string): Promise<string> {
   const encoder = new TextEncoder();
@@ -9,9 +11,6 @@ async function hashString(str: string): Promise<string> {
   return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-const VIEW_DEDUPE_TTL_MS = 30 * 60 * 1000;
-const VIEW_DEDUPE_MAX = 2000;
-const recentViewDedupe = new Map<string, number>();
 
 let yugabyteTableEnsured = false;
 async function ensureYugabyteViewsTable(platformEnv?: any) {
@@ -38,7 +37,7 @@ async function ensureYugabyteViewsTable(platformEnv?: any) {
   }
 }
 
-export const POST = async ({ params, locals, request, getClientAddress, platform }: any) => {
+export const POST = async ({ params, locals, request, getClientAddress, platform, cookies }: any) => {
   const chapterId = params.id;
   if (!chapterId) {
     return json({ counted: false, error: 'Capítulo não informado' }, { status: 400 });
@@ -51,28 +50,28 @@ export const POST = async ({ params, locals, request, getClientAddress, platform
     try {
       const cookieHeader = request.headers.get('cookie') || '';
       const vidMatch = cookieHeader.match(/(?:^|;\s*)nox-vid=([^;]+)/);
-      const visitorId = vidMatch ? vidMatch[1] : '';
-      const ip = getClientAddress() || '';
+      let visitorId = vidMatch ? decodeURIComponent(vidMatch[1]) : '';
+      if (!visitorId) {
+        visitorId = crypto.randomUUID();
+        cookies.set('nox-vid', visitorId, {
+          path: '/',
+          httpOnly: true,
+          sameSite: 'lax',
+          secure: new URL(request.url).protocol === 'https:',
+          maxAge: 60 * 60 * 24 * 365
+        });
+      }
       const ua = request.headers.get('user-agent') || '';
-      anonHash = await hashString(`${visitorId || ip}-${ua}`);
+      anonHash = await hashString(`${visitorId}-${ua}`);
     } catch {
       anonHash = 'anonymous-visitor';
     }
   }
 
-  const dedupeKey = `${chapterId}:${userId || anonHash || 'anon'}`;
-  const isTestEnv = typeof process !== 'undefined' && (process.env.VITEST === 'true' || process.env.NODE_ENV === 'test');
-  if (!isTestEnv) {
-    const prevAt = recentViewDedupe.get(dedupeKey);
-    if (prevAt && Date.now() - prevAt < VIEW_DEDUPE_TTL_MS) {
-      return json({
-        counted: false,
-        reason: 'deduplicated'
-      });
-    }
-  }
 
   let yugabyteCounted = false;
+  let dbError: string | null = null;
+  let row: any = null;
   let workViewsTotal = 0;
   let chapterViewsTotal = 0;
 
@@ -89,6 +88,7 @@ export const POST = async ({ params, locals, request, getClientAddress, platform
            SELECT id, work_id, views_total
            FROM public.chapters
            WHERE id = $1
+             AND published_at IS NOT NULL
            LIMIT 1
          ),
          dedupe AS (
@@ -99,7 +99,6 @@ export const POST = async ({ params, locals, request, getClientAddress, platform
                  ($2::uuid IS NOT NULL AND user_id = $2::uuid)
                  OR ($2::uuid IS NULL AND anonymous_hash = $3::text)
                )
-               AND viewed_at > now() - interval '30 minutes'
            ) AS recent
          ),
          ins AS (
@@ -107,6 +106,7 @@ export const POST = async ({ params, locals, request, getClientAddress, platform
            SELECT chap.id, chap.work_id, $2::uuid, $3::text, 'WEB', now()
            FROM chap, dedupe
            WHERE NOT dedupe.recent
+           ON CONFLICT DO NOTHING
            RETURNING chapter_id, work_id
          ),
          up_chap AS (
@@ -148,15 +148,8 @@ export const POST = async ({ params, locals, request, getClientAddress, platform
       1
     );
 
-    const row = res.rows[0];
+    row = res.rows[0];
     if (row?.chapter_id) {
-      if (!isTestEnv) {
-        if (recentViewDedupe.size >= VIEW_DEDUPE_MAX) {
-          const oldest = recentViewDedupe.keys().next().value;
-          if (oldest) recentViewDedupe.delete(oldest);
-        }
-        recentViewDedupe.set(dedupeKey, Date.now());
-      }
       if (!row.recent && row.chapter_views_total !== null) {
         chapterViewsTotal = Number(row.chapter_views_total || 0);
         workViewsTotal = Number(row.work_views_total || 0);
@@ -164,10 +157,18 @@ export const POST = async ({ params, locals, request, getClientAddress, platform
       }
     }
   } catch (err: any) {
-    console.warn('[VIEW_YUGABYTE_RECORD_ERROR]', err?.message || err);
+    dbError = err?.message || String(err);
+    console.warn('[VIEW_YUGABYTE_RECORD_ERROR]', dbError);
   }
 
   if (yugabyteCounted) {
+    invalidateHomePublicCache();
+    invalidateTrendingCache();
+    // Bundles LKG da home ordenam/exibem views_total: nao podem sobreviver a uma view nova.
+    invalidateYugabyteLkgPrefix('home_bundle');
+    invalidateYugabyteLkgPrefix('home_works');
+    invalidateYugabyteLkgPrefix('home_most_read');
+    invalidateYugabyteLkgPrefix('recent_releases_');
     return json({
       counted: true,
       work_views: workViewsTotal,
@@ -175,8 +176,13 @@ export const POST = async ({ params, locals, request, getClientAddress, platform
     });
   }
 
-  return json({
-    counted: false,
-    reason: 'deduplicated'
-  });
+  if (dbError) {
+    return json({ counted: false, reason: 'db_error' }, { status: 503 });
+  }
+
+  if (!row?.chapter_id) {
+    return json({ counted: false, reason: 'chapter_not_found' }, { status: 404 });
+  }
+
+  return json({ counted: false, reason: 'already_counted' });
 };

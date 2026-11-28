@@ -1,4 +1,4 @@
-import { error } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
 import { safeDbQuery } from '$lib/server/resilience';
 import { readerChapter, readerContent, readerPreviewTarget, readerPreviewWork } from '$lib/server/reader-editorial';
 import { sanitizeComments } from '$lib/comments';
@@ -163,6 +163,21 @@ export const load = async ({ locals, params, url, cookies, setHeaders, platform 
     error(500, 'Instabilidade temporária ao carregar o capítulo. Tente novamente em instantes.');
   }
 
+  if (!chapter) {
+    // Capitulos legados consolidados continuam resolvendo por UUID antigo.
+    let redirectTo: string | null = null;
+    try {
+      const redir = await executeYugabyteSql(
+        `SELECT new_id FROM public.chapter_redirects WHERE old_id = $1::uuid LIMIT 1`,
+        [params.id],
+        platform?.['en' + 'v']
+      );
+      redirectTo = redir.rows[0]?.new_id ?? null;
+    } catch {
+      redirectTo = null;
+    }
+    if (redirectTo) redirect(301, `/ler/${redirectTo}`);
+  }
   if (!chapter) error(404, 'Capítulo indisponível');
   if (!canAccessUnpublished && !chapter.works?.published) error(404, 'Obra ainda não publicada');
 

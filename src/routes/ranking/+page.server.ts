@@ -13,40 +13,22 @@ const DEFAULT_SEASON = {
 };
 
 const PAGE_SIZE = 20;
-const RANKING_PUBLIC_CACHE_TTL_MS = 60_000;
-let cachedPublicRankingBase: {
-  at: number;
-  season: any;
-  totalMembers: number;
-  page1Rows: any[];
-  top3: any[];
-} | null = null;
 
 export const load = async ({ locals, url, setHeaders, platform }: any) => {
-  if (!locals.user) {
-    setHeaders({
-      'cache-control': 'public, max-age=30, s-maxage=60, stale-while-revalidate=120'
-    });
-  } else {
-    setHeaders({
-      'cache-control': 'private, no-cache, no-store, must-revalidate'
-    });
-  }
+  // Ranking e XP sao dinamicos: nada de cache compartilhado.
+  setHeaders({
+    'cache-control': 'private, no-cache, no-store, must-revalidate',
+    'vary': 'Cookie'
+  });
 
   const rawPage = parseInt(url.searchParams.get('page') || '1', 10);
   const requestedPage = Number.isFinite(rawPage) && rawPage >= 1 ? rawPage : 1;
   const searchQuery = (url.searchParams.get('q') || '').trim();
-  const isTestEnv =
-    typeof process !== 'undefined' && (process.env?.VITEST === 'true' || process.env?.NODE_ENV === 'test');
-  const canUsePublicCache = !isTestEnv && cachedPublicRankingBase && Date.now() - cachedPublicRankingBase.at < RANKING_PUBLIC_CACHE_TTL_MS;
 
   let currentSeason: any;
   let totalMembers: number;
 
-  if (canUsePublicCache) {
-    currentSeason = cachedPublicRankingBase!.season;
-    totalMembers = cachedPublicRankingBase!.totalMembers;
-  } else {
+  {
     // 1 & 2. Fetch active season and total non-test members in parallel
     const [seasonRes, countRes] = await Promise.all([
       executeYugabyteSql(`
@@ -73,15 +55,13 @@ export const load = async ({ locals, url, setHeaders, platform }: any) => {
 
   // 3. Fetch leaderboard members for current page with deterministic ordering
   let rawMembers: any[];
-  if (canUsePublicCache && currentPage === 1) {
-    rawMembers = cachedPublicRankingBase!.page1Rows;
-  } else {
+  {
     const pageRes = await executeYugabyteSql(`
-      SELECT id, username, display_name, xp, lifetime_xp, season_xp, avatar_id, avatar_crop,
+      SELECT id, username, display_name, xp, xp AS lifetime_xp, xp AS season_xp, avatar_id, avatar_crop,
              avatar_frame_id, name_color, created_at, equipped_badge_id
       FROM members
       WHERE is_test = false
-      ORDER BY season_xp DESC, created_at ASC, id ASC
+      ORDER BY xp DESC, created_at ASC, id ASC
       LIMIT $1 OFFSET $2;
     `, [PAGE_SIZE, offset], platform?.env).catch(() => ({ rows: [] }));
     rawMembers = pageRes.rows || [];
@@ -106,24 +86,13 @@ export const load = async ({ locals, url, setHeaders, platform }: any) => {
   let top3: any[];
   if (currentPage === 1 && members.length > 0) {
     top3 = members.slice(0, 3);
-    if (!isTestEnv) {
-      cachedPublicRankingBase = {
-        at: Date.now(),
-        season: currentSeason,
-        totalMembers,
-        page1Rows: rawMembers,
-        top3
-      };
-    }
-  } else if (canUsePublicCache && cachedPublicRankingBase!.top3.length > 0) {
-    top3 = cachedPublicRankingBase!.top3;
   } else {
     const top3Res = await executeYugabyteSql(`
-      SELECT id, username, display_name, xp, lifetime_xp, season_xp, avatar_id, avatar_crop,
+      SELECT id, username, display_name, xp, xp AS lifetime_xp, xp AS season_xp, avatar_id, avatar_crop,
              avatar_frame_id, name_color, created_at, equipped_badge_id
       FROM members
       WHERE is_test = false
-      ORDER BY season_xp DESC, created_at ASC, id ASC
+      ORDER BY xp DESC, created_at ASC, id ASC
       LIMIT 3;
     `, [], platform?.env).catch(() => ({ rows: [] }));
 
@@ -151,9 +120,9 @@ export const load = async ({ locals, url, setHeaders, platform }: any) => {
   if (locals.user?.id) {
     const userRes = await executeYugabyteSql(`
       WITH ranked AS (
-        SELECT id, username, display_name, xp, lifetime_xp, season_xp, avatar_id, avatar_crop,
+        SELECT id, username, display_name, xp, xp AS lifetime_xp, xp AS season_xp, avatar_id, avatar_crop,
                avatar_frame_id, name_color, created_at, equipped_badge_id, equipped_title_id,
-               ROW_NUMBER() OVER (ORDER BY season_xp DESC, created_at ASC, id ASC) AS rank
+               ROW_NUMBER() OVER (ORDER BY xp DESC, created_at ASC, id ASC) AS rank
         FROM members
         WHERE is_test = false
       )
@@ -176,9 +145,9 @@ export const load = async ({ locals, url, setHeaders, platform }: any) => {
     const cleanQ = searchQuery.startsWith('@') ? searchQuery.slice(1) : searchQuery;
     const searchRes = await executeYugabyteSql(`
       WITH ranked AS (
-        SELECT id, username, display_name, xp, season_xp, lifetime_xp, avatar_id, avatar_crop,
+        SELECT id, username, display_name, xp, xp AS season_xp, xp AS lifetime_xp, avatar_id, avatar_crop,
                avatar_frame_id, name_color, created_at, equipped_badge_id,
-               ROW_NUMBER() OVER (ORDER BY season_xp DESC, created_at ASC, id ASC) AS rank
+               ROW_NUMBER() OVER (ORDER BY xp DESC, created_at ASC, id ASC) AS rank
         FROM members
         WHERE is_test = false
       )

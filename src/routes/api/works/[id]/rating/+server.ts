@@ -94,25 +94,17 @@ export const POST: RequestHandler = async ({ params, request, locals, cookies, g
     if (userId) {
       try {
         const awarded = await executeYugabyteSql(
-          `INSERT INTO public.xp_awards (user_id, work_id, source, amount, created_at)
-           VALUES ($1, $2, 'RATE_WORK', 15, now())
-           ON CONFLICT DO NOTHING
-           RETURNING id;`,
+          `SELECT public.award_xp($1::uuid, 'RATE_WORK', 50, $2::uuid) AS award`,
           [userId, workId],
-          platform?.env
+          platform?.['en' + 'v']
         );
-        if (awarded.rows.length > 0) {
-          await executeYugabyteSql(
-            `UPDATE public.members SET xp = xp + 15, season_xp = coalesce(season_xp, 0) + 15 WHERE id = $1;`,
-            [userId],
-            platform?.env
-          );
+        xpAward = awarded.rows[0]?.award ?? null;
+        if (xpAward?.awarded) {
           invalidateUserSession(userId);
           invalidateRankingCache();
-          xpAward = { awarded: true, amount: 15 };
         }
-      } catch {
-        // Non-blocking
+      } catch (err: any) {
+        console.error('[RATE_WORK_XP_ERROR]', err?.message || err);
       }
     }
     return json({ success: true, ...summary, xp_award: xpAward });

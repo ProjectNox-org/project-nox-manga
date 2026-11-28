@@ -13,7 +13,7 @@
   import type { Work } from '$lib/types';
   import { kindLabels } from '$lib/types';
   import { page } from '$app/state';
-  import { resolveCoverUrl, resolveOriginalCoverUrl } from '$lib/covers';
+  import { resolveCoverUrl, resolveOriginalCoverUrl, coverVariantUrl } from '$lib/covers';
   import { decodeHtmlEntities } from '$lib/html-entities';
 
   type Props = {
@@ -57,6 +57,11 @@
   let nextWork = $derived(
     works.length > 1 ? works[(currentIndex + 1) % works.length] : null
   );
+
+  function heroVariant(width: number): string | null {
+    const work: any = currentWork;
+    return coverVariantUrl(work?.cover_id || work?.coverId, width);
+  }
 
   let heroCover = $derived(
     currentWork
@@ -105,7 +110,9 @@
 
   function fallbackCover(node: HTMLImageElement) {
     const onError = () => {
-      if (node.src.includes('size=thumb') || node.src.includes('size=hero')) {
+      node.removeAttribute('srcset');
+      node.removeAttribute('sizes');
+      if (node.src.includes('size=thumb') || node.src.includes('size=hero') || /[?&]w=\d+/.test(node.src)) {
         node.src = resolveOriginalCoverUrl(node.src);
       } else if (!node.src.includes('/brand/nox-symbol.webp')) {
         node.src = '/brand/nox-symbol.webp?v=3';
@@ -302,7 +309,7 @@
 
 <svelte:head>
   {#if heroCover}
-    <link rel="preload" as="image" href={heroCover} fetchpriority="high" />
+    <link rel="preload" as="image" href={heroVariant(650) ?? heroCover} imagesrcset={`${heroVariant(325) ?? heroCover} 325w, ${heroVariant(650) ?? heroCover} 650w`} imagesizes="(max-width: 640px) 260px, 325px" fetchpriority="high" />
   {/if}
   {#if nextCover}
     <link rel="preload" as="image" href={nextCover} />
@@ -378,7 +385,9 @@
                 aria-label={`Ler obra em destaque: ${decodeHtmlEntities(currentWork.title)}`}
               >
                 <img
-                  src={heroCover}
+                  src={heroVariant(650) ?? heroCover}
+                  srcset={`${heroVariant(325) ?? heroCover} 325w, ${heroVariant(650) ?? heroCover} 650w`}
+                  sizes="(max-width: 640px) 260px, 325px"
                   alt={decodeHtmlEntities(currentWork.title)}
                   class="cover-img"
                   class:blurred-cover={effectiveBlur}
@@ -460,11 +469,15 @@
 
               <span class="badge-status">
                 <span class="status-dot"></span>
-                {currentWork.status === 'ONGOING' ? 'Em andamento' : 'Completo'}
+                {currentWork.status === 'ONGOING' ? 'Em andamento' : 'Completo'}{#if currentWork.chapter_count} · {currentWork.chapter_count} capítulos{/if}
               </span>
 
               {#if currentWork.year}
                 <span class="badge-year">{currentWork.year}</span>
+              {/if}
+
+              {#if currentWork.content_rating === 'ADULT_18' || Number(currentWork.age_rating || 0) >= 18}
+                <span class="badge-age" aria-label="Classificação 18 anos" title="Conteúdo adulto (+18)">+18</span>
               {/if}
             </div>
 
@@ -480,6 +493,16 @@
               <p class="hero-synopsis">
                 {decodeHtmlEntities(currentWork.synopsis)}
               </p>
+            {/if}
+
+            {#if currentWork.tags && currentWork.tags.length > 0}
+              <ul class="hero-tags" aria-label="Gêneros">
+                {#each currentWork.tags.slice(0, 3) as tag}
+                  <li title={typeof tag === 'string' ? tag : tag.name}>
+                    {typeof tag === 'string' ? tag : tag.name}
+                  </li>
+                {/each}
+              </ul>
             {/if}
 
             <!-- Action CTAs -->
@@ -1319,5 +1342,44 @@
   .blurred-cover {
     filter: blur(18px) brightness(0.65);
     transform: scale(1.12);
+  }
+
+  .badge-age {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.16rem 0.42rem;
+    border-radius: 8px;
+    border: 1px solid rgba(248, 113, 113, 0.55);
+    background: rgba(248, 113, 113, 0.14);
+    color: #fca5a5;
+    font-size: 0.66rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    line-height: 1.1;
+  }
+
+  .hero-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin: 0.15rem 0 0;
+    padding: 0;
+    list-style: none;
+    max-width: 680px;
+  }
+
+  .hero-tags li {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 0.14rem 0.5rem;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.12);
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    color: #cbd5e1;
+    font-size: 0.7rem;
+    font-weight: 600;
+    line-height: 1.25;
   }
 </style>

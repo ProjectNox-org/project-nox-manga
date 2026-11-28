@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { SvelteSet } from 'svelte/reactivity';
   import {
     BookOpen,
@@ -24,7 +24,7 @@
     SlidersHorizontal,
     X
   } from '@lucide/svelte';
-  import { goto } from '$app/navigation';
+  import { goto, invalidateAll } from '$app/navigation';
   import { action } from '$lib/actions';
   import { kindLabels, statusLabels, date } from '$lib/types';
   import { resolveCoverUrl } from '$lib/covers';
@@ -80,7 +80,62 @@
     return qualifiers.length ? `${number} · ${qualifiers.join(' · ')}` : number;
   }
 
+  function maybeRevalidateViews() {
+    try {
+      const marker = sessionStorage.getItem('nox:view-counted');
+      if (!marker) return;
+      const parsed = JSON.parse(marker) as { workId?: string; ts?: number };
+      const fresh = typeof parsed.ts === 'number' && Date.now() - parsed.ts < 30 * 60 * 1000;
+      if (fresh && parsed.workId && parsed.workId === data.work.id) {
+        sessionStorage.removeItem('nox:view-counted');
+        void invalidateAll();
+      }
+    } catch {
+      /* revalidacao best-effort */
+    }
+  }
+
   onMount(async () => {
+    // Volta do leitor: o SvelteKit restaura a posicao da entrada de historico e pode
+    // cair no fim da pagina. Se esta obra veio do leitor, fixa o topo ate o usuario interagir.
+    if (typeof window !== 'undefined' && !window.location.hash) {
+      let fromReader = false;
+      try {
+        const markerWork = sessionStorage.getItem('nox:from-reader');
+        if (markerWork) sessionStorage.removeItem('nox:from-reader');
+        fromReader = markerWork === data.work.id;
+      } catch {
+        fromReader = false;
+      }
+      if (fromReader) {
+        const startedAt = performance.now();
+        let stopped = false;
+        const stop = () => { stopped = true; };
+        for (const ev of ['wheel', 'touchstart', 'keydown', 'pointerdown'] as const) {
+          window.addEventListener(ev, stop, { passive: true, once: true });
+        }
+        const holdTop = () => {
+          if (stopped) return;
+          window.scrollTo(0, 0);
+          if (performance.now() - startedAt < 1600) requestAnimationFrame(holdTop);
+        };
+        window.scrollTo(0, 0);
+        requestAnimationFrame(holdTop);
+      }
+    }
+    maybeRevalidateViews();
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) maybeRevalidateViews();
+    };
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') maybeRevalidateViews();
+    };
+    window.addEventListener('pageshow', onPageShow);
+    document.addEventListener('visibilitychange', onVisible);
+    onDestroy(() => {
+      window.removeEventListener('pageshow', onPageShow);
+      document.removeEventListener('visibilitychange', onVisible);
+    });
     if (isOfflineSupported()) {
       try {
         const offlineList = await getOfflineChapters();
@@ -2246,8 +2301,9 @@
     gap: 3px;
     font-size: 0.68rem;
     font-weight: 700;
-    color: rgba(226, 232, 240, 0.6);
-    background: rgba(255, 255, 255, 0.05);
+    color: #34d399;
+    background: rgba(52, 211, 153, 0.14);
+    border: 1px solid rgba(52, 211, 153, 0.35);
     padding: 1px 6px;
     border-radius: 999px;
   }

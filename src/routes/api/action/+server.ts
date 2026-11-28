@@ -301,6 +301,20 @@ export const POST = async ({ request, locals, platform }: any) => {
       console.warn('[ACTION_LIBRARY_WARN]', err?.message);
     });
 
+    let favoriteXp: any = null;
+    if (favorite === true) {
+      const r = await executeYugabyteSql<{ award_xp: any }>(
+        `SELECT public.award_xp($1::uuid, 'FAVORITE', 75, $2::uuid, NULL, NULL, 0, 10) AS award_xp;`,
+        [locals.user.id, targetWorkId],
+        platform?.['en' + 'v']
+      ).catch((err: any) => {
+        console.warn('[XP_FAVORITE_WARN]', err?.message);
+        return { rows: [] as any[] };
+      });
+      favoriteXp = r.rows?.[0]?.award_xp ?? null;
+      if (favoriteXp?.awarded) invalidateRankingCache();
+    }
+
     invalidateObraAuxCache(targetWorkId);
     invalidateUserSession(locals.user.id);
 
@@ -309,7 +323,8 @@ export const POST = async ({ request, locals, platform }: any) => {
       work_id: targetWorkId,
       status: status || 'READING',
       favorite: favorite ?? false,
-      following: following ?? true
+      following: following ?? true,
+      xp_award: favoriteXp
     });
   }
 
@@ -414,10 +429,33 @@ export const POST = async ({ request, locals, platform }: any) => {
       platform?.env
     ).catch(() => ({ rows: [{ count: liked ? '1' : '0' }] }));
 
+    let likeXp: any = null;
+    if (liked) {
+      const ownerRes = await executeYugabyteSql<{ user_id: string }>(
+        `SELECT user_id FROM comments WHERE id = $1 LIMIT 1;`,
+        [commentId],
+        platform?.['en' + 'v']
+      ).catch(() => ({ rows: [] as any[] }));
+      const ownerId = ownerRes.rows?.[0]?.user_id;
+      if (ownerId && ownerId !== locals.user.id) {
+        const r = await executeYugabyteSql<{ award_xp: any }>(
+          `SELECT public.award_xp($1::uuid, 'COMMENT_LIKE', 5, NULL, NULL, $2::uuid, 10, 10) AS award_xp;`,
+          [locals.user.id, commentId],
+          platform?.['en' + 'v']
+        ).catch((err: any) => {
+          console.warn('[XP_COMMENT_LIKE_WARN]', err?.message);
+          return { rows: [] as any[] };
+        });
+        likeXp = r.rows?.[0]?.award_xp ?? null;
+        if (likeXp?.awarded) invalidateRankingCache();
+      }
+    }
+
     return json({
       ok: true,
       liked,
-      count: parseInt(countRes.rows[0]?.count || (liked ? '1' : '0'), 10)
+      count: parseInt(countRes.rows[0]?.count || (liked ? '1' : '0'), 10),
+      xp_award: likeXp
     });
   }
 
@@ -489,7 +527,24 @@ export const POST = async ({ request, locals, platform }: any) => {
 
     // Award XP atomically if completed (Atomic CTE: INSERT xp_awards + UPDATE members in 1 statement)
     let xpAward: any = null;
+    let xpGateAllowed = true;
     if (finalCompleted) {
+      const gate = await executeYugabyteSql<{ allowed: boolean }>(
+        `SELECT (
+           (SELECT count(*) FROM public.xp_awards
+             WHERE user_id = $1 AND chapter_id IS NOT NULL
+               AND created_at > now() - interval '90 seconds') = 0
+           AND (SELECT count(*) FROM public.xp_awards
+             WHERE user_id = $1 AND chapter_id IS NOT NULL
+               AND (created_at AT TIME ZONE 'America/Sao_Paulo')::date =
+                   (now() AT TIME ZONE 'America/Sao_Paulo')::date) < 40
+         ) AS allowed;`,
+        [locals.user.id],
+        platform?.['en' + 'v']
+      ).catch(() => ({ rows: [{ allowed: false }] as any[] }));
+      xpGateAllowed = gate.rows?.[0]?.allowed === true;
+    }
+    if (finalCompleted && xpGateAllowed) {
       let atomicXpRes: any = null;
       let xpDatabaseError = false;
       try {
@@ -501,7 +556,9 @@ export const POST = async ({ request, locals, platform }: any) => {
              RETURNING user_id, amount
            )
            UPDATE members m
-           SET xp = COALESCE(m.xp, 0) + na.amount
+           SET xp = COALESCE(m.xp, 0) + na.amount,
+               season_xp = COALESCE(m.season_xp, 0) + na.amount,
+               lifetime_xp = COALESCE(m.lifetime_xp, 0) + na.amount
            FROM new_award na
            WHERE m.id = na.user_id
            RETURNING m.xp;`,
@@ -601,6 +658,19 @@ export const POST = async ({ request, locals, platform }: any) => {
     });
     data = insRes.rows[0];
     problem = null;
+    if (data?.id) {
+      const isReply = Boolean(cPid);
+      const r = await executeYugabyteSql<{ award_xp: any }>(
+        `SELECT public.award_xp($1::uuid, $2::text, $3::int, $4::uuid, $5::uuid, $6::uuid, 60, 5) AS award_xp;`,
+        [locals.user.id, isReply ? 'REPLY' : 'COMMENT', isReply ? 20 : 30, cWid || null, cCid || null, data.id],
+        platform?.['en' + 'v']
+      ).catch((err: any) => {
+        console.warn('[XP_COMMENT_WARN]', err?.message);
+        return { rows: [] as any[] };
+      });
+      (data as any).xp_award = r.rows?.[0]?.award_xp ?? null;
+      if ((data as any).xp_award?.awarded) invalidateRankingCache();
+    }
   } else if (body.scope === 'member' && body.action === 'comment_edit' && locals.user?.id) {
     const cId = String(body.data?.id || body.data?.comment_id || '').trim();
     const cBody = String(body.data?.body || '').trim();

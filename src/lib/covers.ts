@@ -12,12 +12,10 @@ export function resolveCoverUrl(
   if (coverId && typeof coverId === 'string' && coverId.trim()) {
     const trimmed = coverId.trim();
     if (trimmed.startsWith('/') || trimmed.startsWith('http')) return trimmed;
-    const size = typeof options === 'string' ? options : options?.size;
-    // Versioned variants prevent browsers/edge POPs from reusing the old
-    // corrupted thumbnail namespace. The media endpoint canonicalizes the
-    // same version even when older callers omit it.
-    const query = size === 'thumb' || size === 'hero' ? `?size=${size}&v=3` : '';
-    return `/media/${trimmed}${query}`;
+    // CACHE_KEY_UNICO: o endpoint de midia devolve o mesmo objeto para
+    // thumb/hero/full; um unico URL por midia evita baixar a mesma capa duas
+    // vezes (hero + thumb) e aproveita o cache imutavel do navegador.
+    return `/media/${trimmed}?v=3`;
   }
   return '/brand/nox-symbol.webp?v=3';
 }
@@ -28,10 +26,20 @@ export function resolveOriginalCoverUrl(src: string): string {
     const url = new URL(src, 'https://project-nox.invalid');
     url.searchParams.delete('size');
     url.searchParams.delete('v');
+    url.searchParams.delete('w');
     return url.origin === 'https://project-nox.invalid'
       ? `${url.pathname}${url.search}`
       : url.toString();
   } catch {
-    return src.replace(/[?&]size=(?:thumb|hero)/, '').replace(/[?&]v=\d+/, '');
+    return src.replace(/[?&]size=(?:thumb|hero)/, '').replace(/[?&]v=\d+/, '').replace(/[?&]w=\d+/, '');
   }
+}
+
+/** Wider webp variant of the canonical cover, served by the media gateway (?w=). */
+export function coverVariantUrl(coverId?: string | null, width = 650, version = 3): string | null {
+  if (!coverId || typeof coverId !== 'string') return null;
+  const trimmed = coverId.trim();
+  if (!trimmed || trimmed.startsWith('/') || trimmed.startsWith('http')) return null;
+  const w = [325, 650, 750, 900].includes(width) ? width : 650;
+  return `/media/${trimmed}?v=${version}&w=${w}`;
 }
