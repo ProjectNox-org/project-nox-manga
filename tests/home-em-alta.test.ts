@@ -32,9 +32,13 @@ describe('home Em alta', () => {
   it('work shelf usa metrica do periodo no badge e pills com 44px', () => {
     const shelf = read('src/lib/components/WorkShelf.svelte');
     expect(shelf).toContain('periodMetric(work)');
+    expect(shelf).toContain('displayedPeriod');
+    expect(shelf).toContain('AbortController');
     expect(shelf).toContain('work.period_views');
     expect(shelf).toContain('work.growth_pct');
-    expect(shelf).toContain('min-height: 44px');
+    expect(shelf).toContain('min-height: 34px');
+    expect(shelf).toContain('shelf-controls');
+    expect(shelf).toContain('periodError');
   });
 
   it('invalida o cache de trending quando uma view e contada', () => {

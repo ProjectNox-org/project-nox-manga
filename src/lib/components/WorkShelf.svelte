@@ -37,50 +37,83 @@
   }: Props = $props();
 
   let extraWorks = $state<Work[]>([]);
-  let remoteWorks = $state<Work[] | null>(null);
+  let remote = $state<{ period: string; works: Work[] } | null>(null);
   let activePeriod = $state(periods[0]?.key ?? '');
-  let periodLoading = $state(false);
-  let currentWorks = $derived(remoteWorks ?? [...works, ...extraWorks]);
+  let pendingPeriod = $state<string | null>(null);
+  let periodError = $state('');
+  let requestSeq = 0;
+  let inflight: AbortController | null = null;
+  let currentWorks = $derived(remote ? [...remote.works, ...extraWorks] : [...works, ...extraWorks]);
+  // A metrica pertence ao periodo dos dados EXIBIDOS, nao ao botao ja pressionado.
+  let displayedPeriod = $derived(remote?.period ?? periods[0]?.key ?? '');
+  let canExpand = $derived(Boolean(loadMoreSort) || periods.length > 0);
+  let expandTarget = $derived(
+    (periods.find((p) => p.key === activePeriod)?.label ?? title).toLowerCase()
+  );
+  let periodLoading = $derived(pendingPeriod !== null);
 
   function periodMetric(work: any): { text: string; title: string } {
     const total = Number(work.views_total || 0);
-    if (activePeriod === 'rising') {
+    if (displayedPeriod === 'rising') {
       const growth = Number(work.growth ?? 0);
       const recent = Number(work.period_views ?? 0);
       const prev = Number(work.previous_views ?? 0);
       const pct = work.growth_pct;
       const text = pct === null || pct === undefined ? `+${formatViews(growth)}` : `+${pct}%`;
       const title = prev > 0
-        ? `${growth > 0 ? '+' : ''}${formatViews(growth)} visualizações vs. semana anterior · ${formatViews(recent)} nos últimos 7 dias`
-        : `Novo no ranking · ${formatViews(recent)} visualizações nos últimos 7 dias`;
+        ? `${growth > 0 ? '+' : ''}${formatViews(growth)} visualizacoes vs. semana anterior · ${formatViews(recent)} nos ultimos 7 dias`
+        : `Novo destaque · ${formatViews(recent)} visualizacoes nos ultimos 7 dias`;
       return { text, title };
     }
-    if (activePeriod === 'week' || activePeriod === 'month') {
+    if (displayedPeriod === 'week' || displayedPeriod === 'month') {
       const value = Number(work.period_views ?? 0);
-      const label = activePeriod === 'week' ? 'últimos 7 dias' : 'últimos 30 dias';
-      return { text: formatViews(value), title: `${formatViews(value)} visualizações nos ${label}` };
+      const label = displayedPeriod === 'week' ? 'ultimos 7 dias' : 'ultimos 30 dias';
+      return { text: formatViews(value), title: `${formatViews(value)} visualizacoes nos ${label}` };
     }
-    return { text: formatViews(total), title: `${formatViews(total)} visualizações acumuladas` };
+    return { text: formatViews(total), title: `${formatViews(total)} visualizacoes acumuladas` };
   }
 
-  async function selectPeriod(key: string) {
-    if (!endpoint || key === activePeriod || periodLoading) return;
+  async function selectPeriod(key: string, force = false) {
+    if (!endpoint) return;
+    if (!force && key === activePeriod && remote?.period === key) return;
     activePeriod = key;
-    periodLoading = true;
+    periodError = '';
     isExpanded = false;
     extraWorks = [];
+    // hasMore pertence ao filtro: sem reset, um ranking curto bloqueia a
+    // paginacao dos filtros seguintes.
+    hasMore = true;
+    loadMoreError = false;
+    inflight?.abort();
+    const controller = new AbortController();
+    inflight = controller;
+    const seq = ++requestSeq;
+    pendingPeriod = key;
     try {
-      const res = await fetch(`${endpoint}?period=${encodeURIComponent(key)}`);
+      const res = await fetch(`${endpoint}?period=${encodeURIComponent(key)}`, {
+        signal: controller.signal
+      });
       if (!res.ok) throw new Error('Falha ao carregar o ranking');
       const payload = await res.json();
-      remoteWorks = Array.isArray(payload.works) ? payload.works : [];
+      if (seq !== requestSeq) return;
+      remote = {
+        period: typeof payload.period === 'string' ? payload.period : key,
+        works: Array.isArray(payload.works) ? payload.works : []
+      };
       updateScrollState();
-    } catch {
-      activePeriod = periods[0]?.key ?? activePeriod;
+      requestAnimationFrame(() => scrollContainer?.scrollTo({ left: 0 }));
+    } catch (err: any) {
+      if (seq !== requestSeq || err?.name === 'AbortError') return;
+      periodError = 'Nao foi possivel carregar este ranking.';
     } finally {
-      periodLoading = false;
+      if (seq === requestSeq) pendingPeriod = null;
     }
   }
+
+  function retryPeriod() {
+    void selectPeriod(activePeriod, true);
+  }
+
   let isExpanded = $state(false);
   let loadingMore = $state(false);
   let loadMoreError = $state(false);
@@ -147,13 +180,17 @@
   }
 
   async function handleLoadMore() {
-    if (!loadMoreSort || loadingMore || !hasMore) return;
+    if ((!loadMoreSort && periods.length === 0) || loadingMore || !hasMore) return;
     isExpanded = true;
     loadingMore = true;
     loadMoreError = false;
     try {
       // Fetch 12 items to neatly fill responsive grid rows (divisible by 6, 4, 3, 2)
-      const res = await fetch(`/api/works?sort=${loadMoreSort}&offset=${currentWorks.length}&limit=12&include_total=false`);
+      const url =
+        periods.length > 0 && endpoint
+          ? `${endpoint}?period=${encodeURIComponent(displayedPeriod)}&offset=${currentWorks.length}&limit=12`
+          : `/api/works?sort=${loadMoreSort}&offset=${currentWorks.length}&limit=12&include_total=false`;
+      const res = await fetch(url);
       if (!res.ok) throw new Error('Falha ao carregar mais obras');
       const data = await res.json();
       const newItems: Work[] = data.works || [];
@@ -221,38 +258,40 @@
       </div>
 
       {#if periods.length > 0}
-        <div class="period-pills" role="group" aria-label="Período do ranking">
-          {#each periods as period (period.key)}
-            <button
-              type="button"
-              class="period-pill"
-              class:is-active={activePeriod === period.key}
-              aria-pressed={activePeriod === period.key}
-              disabled={periodLoading && activePeriod === period.key}
-              onclick={() => selectPeriod(period.key)}
-            >
-              {period.label}
-            </button>
-          {/each}
+        <div class="shelf-controls">
+          <div class="period-pills" role="group" aria-label="Período do ranking" aria-busy={periodLoading}>
+            {#each periods as period (period.key)}
+              <button
+                type="button"
+                class="period-pill"
+                class:is-active={activePeriod === period.key}
+                aria-pressed={activePeriod === period.key}
+                disabled={pendingPeriod === period.key}
+                onclick={() => selectPeriod(period.key)}
+              >
+                {period.label}
+              </button>
+            {/each}
+          </div>
         </div>
       {/if}
 
       <div class="shelf-actions">
-        {#if loadMoreSort}
+        {#if canExpand}
           <button
             type="button"
             class="expand-inline-btn"
             onclick={toggleExpand}
             disabled={loadingMore}
-            aria-label={isExpanded ? `Recolher ${title.toLowerCase()}` : `Expandir ${title.toLowerCase()}`}
+            aria-label={isExpanded ? `Recolher ${expandTarget}` : `Expandir ${expandTarget}`}
           >
             {#if loadingMore}
               <Loader2 size={14} class="spin" />
               <span>Carregando...</span>
             {:else if isExpanded}
-              <span>Recolher {title.toLowerCase()}</span>
+              <span>Recolher {expandTarget}</span>
             {:else}
-              <span>Expandir {title.toLowerCase()}</span>
+              <span>Expandir {expandTarget}</span>
               <ArrowRight size={13} />
             {/if}
           </button>
@@ -284,13 +323,30 @@
     </div>
 
     <!-- Shelf container: Smooth Horizontal Scroll OR Clean Grid -->
+    {#if periodError}
+      <div class="period-error" role="alert">
+        <span>{periodError}</span>
+        <button type="button" class="period-retry" onclick={retryPeriod}>Tentar novamente</button>
+      </div>
+    {/if}
+
     <div
       class="shelf-scroll-container"
       class:is-expanded={isExpanded}
+      class:is-loading={periodLoading}
+      aria-busy={periodLoading}
       bind:this={scrollContainer}
       use:bindScroll
     >
       <div class="shelf-track" class:is-expanded={isExpanded}>
+        {#if periodLoading}
+          {#each Array(8) as _, i (i)}
+            <div class="shelf-card shelf-skeleton" aria-hidden="true">
+              <div class="card-cover-box skeleton-box"></div>
+              <div class="card-info"><span class="skeleton-line"></span></div>
+            </div>
+          {/each}
+        {:else}
         {#each currentWorks as work, i (work.id)}
           {@const isAdult = (work.content_rating || (work as any).contentRating) === 'ADULT_18'}
           {@const effectiveBlur = isAdult && (page.data?.blurNsfw ?? true)}
@@ -304,9 +360,13 @@
             <div class="card-cover-box">
               <img
                 use:fallbackCover
-                use:deferImage={{ src: isEager ? null : shelfCover, rootMargin: '0px 450px' }}
-                src={isEager ? shelfCover : undefined}
-                alt={titleText}
+                src={shelfCover}
+                alt=""
+                onerror={(event) => {
+                  const img = event.currentTarget as HTMLImageElement;
+                  img.onerror = null;
+                  img.src = '/brand/nox-symbol.webp?v=3';
+                }}
                 class="card-img"
                 class:blurred-cover={effectiveBlur}
                 width="210"
@@ -357,6 +417,7 @@
             </div>
           </a>
         {/each}
+        {/if}
 
       </div>
     </div>
@@ -378,21 +439,13 @@
               <Loader2 size={16} class="spin" />
               <span>Carregando...</span>
             {:else}
-              <span>Carregar mais em {title}</span>
+              <span>Carregar mais do ranking {expandTarget}</span>
               <ArrowRight size={16} />
             {/if}
           </button>
         {:else}
-          <span class="all-loaded-text">Todas as obras de {title.toLowerCase()} foram carregadas.</span>
+          <span class="all-loaded-text">Todas as obras do ranking {expandTarget} foram carregadas.</span>
         {/if}
-
-        <button
-          type="button"
-          class="btn-collapse"
-          onclick={() => (isExpanded = false)}
-        >
-          Recolher {title.toLowerCase()} ↑
-        </button>
       </div>
     {/if}
   </section>
@@ -414,6 +467,7 @@
 
   .shelf-header {
     display: flex;
+    flex-wrap: wrap;
     align-items: flex-end;
     justify-content: space-between;
     gap: 1rem;
@@ -466,6 +520,8 @@
     display: flex;
     align-items: center;
     gap: 1.1rem;
+    order: 2;
+    margin-left: auto;
   }
 
   .view-all-link {
@@ -866,7 +922,7 @@
     }
 
     .shelf-nav-arrows {
-      display: none;
+      display: flex;
     }
 
     .shelf-scroll-container {
@@ -977,31 +1033,42 @@
     transform: scale(1.12);
   }
 
+  .shelf-controls {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 1rem;
+    flex-wrap: wrap;
+    width: 100%;
+    margin-top: 0.75rem;
+    order: 3;
+  }
+
   .period-pills {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
+    gap: 8px;
     align-items: center;
-    margin-left: auto;
   }
 
   .period-pill {
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: rgba(40, 30, 60, 0.7);
     color: #d4d4d8;
-    font-size: 0.9rem;
+    font-size: 12.5px;
     font-weight: 700;
     letter-spacing: 0.01em;
-    padding: 0.65rem 1.1rem;
+    padding: 0 0.85rem;
     border-radius: 999px;
     cursor: pointer;
-    min-height: 44px;
-    transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+    min-height: 34px;
+    transition: color 0.18s ease, border-color 0.18s ease, background 0.18s ease;
   }
 
   .period-pill:hover {
     color: #f2f0f7;
-    border-color: rgba(223, 194, 141, 0.35);
+    border-color: rgba(223, 194, 141, 0.45);
+    background: rgba(60, 45, 90, 0.75);
   }
 
   .period-pill.is-active {
@@ -1013,5 +1080,86 @@
   .period-pill:focus-visible {
     outline: 2px solid #dfc28d;
     outline-offset: 2px;
+  }
+
+  .period-error {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+    padding: 0.6rem 0.85rem;
+    border-radius: 10px;
+    border: 1px solid rgba(248, 113, 113, 0.35);
+    background: rgba(248, 113, 113, 0.08);
+    color: #fecaca;
+    font-size: 0.85rem;
+  }
+
+  .period-retry {
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    background: transparent;
+    color: #fecaca;
+    border-radius: 8px;
+    padding: 0.35rem 0.7rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .shelf-scroll-container.is-loading {
+    opacity: 0.55;
+    pointer-events: none;
+  }
+
+  @media (max-width: 640px) {
+    .shelf-controls {
+      gap: 0.6rem;
+    }
+    .period-pills {
+      width: 100%;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      padding-bottom: 2px;
+    }
+    .period-pill {
+      flex: 0 0 auto;
+      min-height: 36px;
+    }
+    .shelf-nav-arrows {
+      margin-left: 0;
+    }
+    .shelf-actions {
+      margin-left: auto;
+    }
+  }
+
+  .shelf-skeleton {
+    pointer-events: none;
+  }
+
+  .skeleton-box {
+    aspect-ratio: 5 / 7;
+    width: 100%;
+    border-radius: 12px;
+    background: linear-gradient(100deg, rgba(255, 255, 255, 0.05) 30%, rgba(255, 255, 255, 0.11) 50%, rgba(255, 255, 255, 0.05) 70%);
+    background-size: 220% 100%;
+    animation: skeleton-shimmer 1.4s ease-in-out infinite;
+  }
+
+  .skeleton-line {
+    display: block;
+    height: 14px;
+    width: 70%;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  @keyframes skeleton-shimmer {
+    from { background-position: 120% 0; }
+    to { background-position: -60% 0; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .skeleton-box { animation: none; }
   }
 </style>

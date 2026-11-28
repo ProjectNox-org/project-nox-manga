@@ -224,9 +224,9 @@
         shelfIndex={1}
         endpoint="/api/trending"
         periods={[
-          { key: 'week', label: 'Semana' },
+          { key: 'week', label: 'Semanal' },
           { key: 'rising', label: 'Em ascensão' },
-          { key: 'month', label: 'Mês' },
+          { key: 'month', label: 'Mensal' },
           { key: 'total', label: 'Total' }
         ]}
       />

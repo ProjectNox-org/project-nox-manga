@@ -17,7 +17,7 @@ const viewsCte = (fromDays: number, toDays: number) => `
    GROUP BY c.work_id
 `;
 
-function periodSql(period: TrendingPeriod): string {
+function periodSql(period: TrendingPeriod, limit: number, offset: number): string {
   if (period === 'rising') {
     return `
       WITH cur AS (${viewsCte(7, 0)}),
@@ -43,7 +43,7 @@ function periodSql(period: TrendingPeriod): string {
                      THEN (period_views::numeric / previous_views)
                      ELSE period_views END DESC,
                 period_views DESC, views_total DESC, id
-       LIMIT 24;
+       LIMIT ${limit} OFFSET ${offset};
     `;
   }
   if (period === 'total') {
@@ -52,7 +52,7 @@ function periodSql(period: TrendingPeriod): string {
         FROM works
        WHERE published = true
        ORDER BY views_total DESC, id
-       LIMIT 24;
+       LIMIT ${limit} OFFSET ${offset};
     `;
   }
   const days = period === 'month' ? 30 : 7;
@@ -63,21 +63,28 @@ function periodSql(period: TrendingPeriod): string {
       JOIN cur ON cur.work_id = w.id
      WHERE w.published = true
      ORDER BY cur.views DESC, w.views_total DESC, w.id
-     LIMIT 24;
+     LIMIT ${limit} OFFSET ${offset};
   `;
 }
 
 type CacheEntry = { at: number; works: any[] };
-const cache = new Map<TrendingPeriod, CacheEntry>();
+const cache = new Map<string, CacheEntry>();
 
-export async function getTrendingWorks(platformEnv: any, period: TrendingPeriod): Promise<any[]> {
+export async function getTrendingWorks(
+  platformEnv: any,
+  period: TrendingPeriod,
+  opts: { limit?: number; offset?: number } = {}
+): Promise<any[]> {
+  const limit = Math.min(60, Math.max(1, Number(opts.limit) || 24));
+  const offset = Math.min(10_000, Math.max(0, Number(opts.offset) || 0));
+  const key = `${period}:${limit}:${offset}`;
   const now = Date.now();
-  const hit = cache.get(period);
+  const hit = cache.get(key);
   if (hit && now - hit.at < TRENDING_TTL_MS) return hit.works;
   try {
-    const res = await executeYugabyteSql<any>(periodSql(period), [], platformEnv);
+    const res = await executeYugabyteSql<any>(periodSql(period, limit, offset), [], platformEnv);
     const works = res.rows || [];
-    if (works.length > 0) cache.set(period, { at: now, works });
+    if (works.length > 0) cache.set(key, { at: now, works });
     return works;
   } catch (err: any) {
     console.warn('[TRENDING_WARN]', period, err?.message || err);

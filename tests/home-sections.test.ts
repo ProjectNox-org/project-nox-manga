@@ -35,9 +35,9 @@ describe('home sections', () => {
     const page = read('src/routes/+page.svelte');
     expect(page).toContain('title="Em alta"');
     expect(page).not.toContain('title="Mais Lidos"');
-    expect(page).toContain("label: 'Semana'");
+    expect(page).toContain("label: 'Semanal'");
     expect(page).toContain("label: 'Em ascensão'");
-    expect(page).toContain("label: 'Mês'");
+    expect(page).toContain("label: 'Mensal'");
     expect(page).toContain("label: 'Total'");
     expect(page).toContain('endpoint="/api/trending"');
   });
