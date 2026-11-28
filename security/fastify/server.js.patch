@@ -1,0 +1,20 @@
+--- /tmp/opencode/consolidation/server.js.orig	2026-11-28 00:32:25.315619571 -0300
++++ /tmp/opencode/mirror/fastify-server.js	2026-11-28 00:28:50.934276521 -0300
+@@ -54,7 +54,7 @@
+       [randomUUID(), 'confirm:' + mail, v]);
+     await client.query('commit');
+     req.log.info({ email: mail }, 'registro criado');
+-    return ok(reply, { message: 'conta criada; confirme o e-mail', confirm_token: v });
++    return ok(reply, { message: 'conta criada; confirme o e-mail' });
+   } catch (e) { await client.query('rollback'); req.log.error(e); return bad(reply, 500, 'falha no cadastro'); }
+   finally { client.release(); }
+ });
+@@ -112,7 +112,7 @@
+   await pool.query(
+     `insert into public.verification (id, identifier, value, "expiresAt", "createdAt", "updatedAt")
+      values ($1, $2, $3, now() + interval '1 hour', now(), now())`, [randomUUID(), 'reset:' + mail, v]);
+-  return ok(reply, { message: 'instrucoes geradas', reset_token: v });
++  return ok(reply, { message: 'se o e-mail existir, enviaremos instrucoes' });
+ });
+ 
+ app.post('/api/auth/reset/confirm', async (req, reply) => {
