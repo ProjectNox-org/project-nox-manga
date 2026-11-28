@@ -138,7 +138,7 @@ describe('Yugabyte Authoritative Runtime & Architecture Smoke Tests', () => {
     expect(result.recentReleases[0].chapters[0].number).toBe(1190);
     expect(result.loadError).toBe(false);
     expect(setHeaders).toHaveBeenCalledWith({
-      'cache-control': 'private, no-cache, no-store, must-revalidate'
+      'cache-control': 'private, no-cache, max-age=0, must-revalidate'
     });
 
     const sharedHeaders = vi.fn();
@@ -150,7 +150,7 @@ describe('Yugabyte Authoritative Runtime & Architecture Smoke Tests', () => {
       platform: { env: {} }
     } as any);
     expect(sharedHeaders).toHaveBeenCalledWith({
-      'cache-control': 'public, max-age=30, s-maxage=30, stale-while-revalidate=60'
+      'cache-control': 'private, no-cache, max-age=0, must-revalidate'
     });
 
     const personalizedHeaders = vi.fn();
@@ -162,7 +162,7 @@ describe('Yugabyte Authoritative Runtime & Architecture Smoke Tests', () => {
       platform: { env: {} }
     } as any);
     expect(personalizedHeaders).toHaveBeenCalledWith({
-      'cache-control': 'private, max-age=15, stale-while-revalidate=30'
+      'cache-control': 'private, no-cache, max-age=0, must-revalidate'
     });
   });
 

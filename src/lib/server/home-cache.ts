@@ -2,7 +2,6 @@
 export type HomeCachePayload = {
   timestamp: number;
   works: any[];
-  featuredList: any[];
   recentReleases: any[];
   mostReadWorks: any[];
 };

@@ -5,8 +5,58 @@
   import RecentReleases from '$lib/components/RecentReleases.svelte';
   import { resolveOriginalCoverUrl } from '$lib/covers';
   import { decodeHtmlEntities } from '$lib/html-entities';
+  import { onMount } from 'svelte';
 
   let { data } = $props();
+
+  // Selecao do carrossel: o servidor manda; a troca de slot so entra quando o
+  // visitante esta parado e visivel (sem recarregar a home).
+  let heroOverride = $state<any[] | null>(null);
+  let heroWorks = $derived(heroOverride ?? data.featuredList);
+  let heroTimer: ReturnType<typeof setTimeout> | null = null;
+  let heroLastInteraction = 0;
+
+  $effect(() => {
+    // invalidateAll (contadores) atualiza data.featuredList; o override expira.
+    data.featuredList;
+    heroOverride = null;
+  });
+
+  function markHeroInteraction() {
+    heroLastInteraction = Date.now();
+  }
+
+  async function refreshHero() {
+    try {
+      const res = await fetch('/api/hero', { headers: { accept: 'application/json' }, credentials: 'same-origin' });
+      if (!res.ok) return;
+      const payload = await res.json();
+      const nextIds = (payload.works || []).map((w: any) => w.id).join(',');
+      const currentIds = (heroWorks || []).map((w: any) => w.id).join(',');
+      const quiet = Date.now() - heroLastInteraction > 15000;
+      if (nextIds && nextIds !== currentIds && document.visibilityState === 'visible' && quiet) {
+        heroOverride = payload.works;
+      }
+    } catch {
+      // degradacao silenciosa: mantem a selecao atual
+    }
+  }
+
+  function scheduleHeroRefresh() {
+    const slotMs = 15 * 60 * 1000;
+    const delay = Math.max(2000, Math.ceil(Date.now() / slotMs) * slotMs - Date.now() + 2000);
+    heroTimer = setTimeout(async () => {
+      await refreshHero();
+      scheduleHeroRefresh();
+    }, delay);
+  }
+
+  onMount(() => {
+    scheduleHeroRefresh();
+    return () => {
+      if (heroTimer) clearTimeout(heroTimer);
+    };
+  });
 
   let continueContainer: HTMLDivElement | null = $state(null);
   let canScrollContinueLeft = $state(false);
@@ -61,7 +111,16 @@
 
 <div class="home-wrapper">
   <!-- 1. Editorial Hero Carousel (Large Cover on Left + Full-Bleed Atmospheric Backdrop) -->
-  <HeroCarousel works={data.featuredList} continueReading={data.recent} />
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div
+    class="hero-interaction-shell"
+    onpointerdown={markHeroInteraction}
+    onwheel={markHeroInteraction}
+    onkeydown={markHeroInteraction}
+    ontouchstart={markHeroInteraction}
+  >
+    <HeroCarousel works={heroWorks} continueReading={data.recent} />
+  </div>
 
   <div class="home-content">
     <!-- 2. Continue Reading (Strictly for authenticated readers with active reading progress) -->
