@@ -132,7 +132,7 @@ export const load = async ({ locals, setHeaders, platform }: any) => {
     }
   } else {
     setHeaders({
-      'cache-control': 'public, max-age=60, s-maxage=120, stale-while-revalidate=300'
+      'cache-control': 'private, no-cache, no-store, must-revalidate'
     });
   }
 

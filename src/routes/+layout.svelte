@@ -22,6 +22,7 @@
   import { getNameColorInfo } from '$lib/name-colors';
   import { registerDynamicFrame } from '$lib/frame-config';
   import { page } from '$app/state';
+  import { invalidateAll } from '$app/navigation';
 
   let { data, children } = $props();
 
@@ -98,6 +99,10 @@
         const newXp = total && total > 0 ? total : currentXp + (amount || 0);
         profileOverride = { ...(profileOverride || data.profile), xp: newXp };
         data.profile = { ...data.profile, xp: newXp };
+      }
+      // Dados de XP/ranking sao dinamicos: recarrega do servidor em vez de confiar no cache.
+      if (currentPath === '/ranking' || currentPath === '/loja' || currentPath === '/me' || currentPath.startsWith('/u/')) {
+        void invalidateAll();
       }
     };
     window.addEventListener('nox-xp-awarded', handleXpAwarded);
