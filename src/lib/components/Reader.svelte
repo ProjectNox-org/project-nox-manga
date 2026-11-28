@@ -743,6 +743,11 @@
   );
 
   onMount(async () => {
+    try {
+      sessionStorage.setItem('nox:from-reader', data.chapter.work_id);
+    } catch {
+      /* sessionStorage indisponivel */
+    }
     // Check offline status & hydrate local page blobs if present
     const off = await getOfflineChapter(data.chapter.id);
     if (off && off.pages?.length) {

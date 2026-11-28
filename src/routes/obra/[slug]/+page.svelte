@@ -81,6 +81,33 @@
   }
 
   onMount(async () => {
+    // Volta do leitor: o SvelteKit restaura a posicao da entrada de historico e pode
+    // cair no fim da pagina. Se esta obra veio do leitor, fixa o topo ate o usuario interagir.
+    if (typeof window !== 'undefined' && !window.location.hash) {
+      let fromReader = false;
+      try {
+        const markerWork = sessionStorage.getItem('nox:from-reader');
+        if (markerWork) sessionStorage.removeItem('nox:from-reader');
+        fromReader = markerWork === data.work.id;
+      } catch {
+        fromReader = false;
+      }
+      if (fromReader) {
+        const startedAt = performance.now();
+        let stopped = false;
+        const stop = () => { stopped = true; };
+        for (const ev of ['wheel', 'touchstart', 'keydown', 'pointerdown'] as const) {
+          window.addEventListener(ev, stop, { passive: true, once: true });
+        }
+        const holdTop = () => {
+          if (stopped) return;
+          window.scrollTo(0, 0);
+          if (performance.now() - startedAt < 1600) requestAnimationFrame(holdTop);
+        };
+        window.scrollTo(0, 0);
+        requestAnimationFrame(holdTop);
+      }
+    }
     try {
       const marker = sessionStorage.getItem('nox:view-counted');
       if (marker) {
