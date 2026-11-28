@@ -707,6 +707,12 @@
   );
 
   onMount(async () => {
+    fetch('/api/chapters/' + data.chapter.id + '/view', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: '{}',
+      credentials: 'same-origin'
+    }).catch(() => undefined);
     // Check offline status & hydrate local page blobs if present
     const off = await getOfflineChapter(data.chapter.id);
     if (off && off.pages?.length) {
