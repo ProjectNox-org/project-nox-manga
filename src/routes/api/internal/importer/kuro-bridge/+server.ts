@@ -28,15 +28,24 @@ export const POST: RequestHandler = async ({ request }) => {
 
   const { url, method = 'GET', headers = {}, body } = await request.json();
 
-  const allowedPrefixes = [
-    'https://kuromangas.com',
-    'https://cdn.kuromangas.com',
-    'https://nx-toons.xyz',
-    'https://nexustoons.com',
-    'https://img.nx-toons.xyz'
-  ];
-  if (!url || typeof url !== 'string' || !allowedPrefixes.some(p => url.startsWith(p))) {
+  let target!: URL;
+  try {
+    target = new URL(String(url));
+  } catch {
     error(400, 'Invalid target URL');
+  }
+  const allowedHosts = new Set([
+    'kuromangas.com',
+    'cdn.kuromangas.com',
+    'nx-toons.xyz',
+    'nexustoons.com',
+    'img.nx-toons.xyz'
+  ]);
+  if (target.protocol !== 'https:' || !allowedHosts.has(target.hostname)) {
+    error(400, 'Invalid target URL');
+  }
+  if (!['GET', 'POST'].includes(String(method).toUpperCase())) {
+    error(400, 'Invalid method');
   }
 
   const isNexusToons = url.includes('nx-toons.xyz') || url.includes('nexustoons.com');
@@ -63,7 +72,8 @@ export const POST: RequestHandler = async ({ request }) => {
       };
 
   try {
-    const upstreamRes = await fetch(url, {
+    const upstreamRes = await fetch(target, {
+      redirect: 'manual',
       method,
       headers: {
         ...defaultHeaders,

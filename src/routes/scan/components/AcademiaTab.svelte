@@ -240,7 +240,13 @@
     return escaped
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="doc-link">$1</a>');
+      .replace(/\[(.*?)\]\((.*?)\)/g, (match: string, label: string, href: string) => {
+        const raw = href.trim();
+        const safe = /^(https?:|mailto:)/i.test(raw) && !/[\s"<>]/.test(raw);
+        return safe
+          ? '<a href="' + raw + '" target="_blank" rel="noopener noreferrer" class="doc-link">' + label + '</a>'
+          : match;
+      });
   }
 </script>
 

@@ -4316,6 +4316,7 @@ export const actions: Actions = {
 
   setPreAprovadoFixture: async ({ request, locals, platform }) => {
     if (!locals.user) return fail(401, { message: 'Não autenticado' });
+    if (locals.role !== 'ADMIN') return fail(403, { message: 'Permissao negada.' });
     const formData = await request.formData();
     const mode = String(formData.get('mode') || 'status');
     const chId = 'b5a9fbf0-206d-475a-8e05-70aaa672f71e';
@@ -4420,6 +4421,16 @@ export const actions: Actions = {
     const formData = await request.formData();
     const scanId = String(formData.get('scan_id') || '');
     const workId = String(formData.get('work_id') || '');
+
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!UUID_RE.test(scanId) || !UUID_RE.test(workId)) return fail(400, { message: 'Identificadores invalidos.' });
+    const membership = await executeYugabyteSql<{ role: string }>(
+      'SELECT role FROM public.scan_members WHERE scan_id = $1 AND user_id = $2 LIMIT 1',
+      [scanId, locals.user.id], platform?.env,
+    ).then((r) => r.rows[0]?.role ?? null).catch(() => null);
+    if (!['OWNER', 'ADMIN'].includes(membership ?? '') && !['ADMIN', 'EDITOR', 'STAFF_SITE'].includes(locals.role || '')) {
+      return fail(403, { message: 'Permissao negada.' });
+    }
     const template = String(formData.get('template') || 'MANHWA');
     const customStagesRaw = String(formData.get('custom_stages') || '[]');
 
