@@ -524,9 +524,37 @@
     viewRecorded = true;
   }
 
+  const viewTrackedIds = new Set<string>();
+
+  async function trackChapterView(): Promise<void> {
+    if (data.preview) return;
+    if (viewTrackedIds.has(data.chapter.id)) return;
+    viewTrackedIds.add(data.chapter.id);
+    try {
+      const res = await fetch('/api/chapters/' + data.chapter.id + '/view', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: '{}',
+        credentials: 'same-origin'
+      });
+      if (!res.ok) {
+        viewTrackedIds.delete(data.chapter.id);
+        return;
+      }
+      const payload = (await res.json().catch(() => null)) as { counted?: boolean; reason?: string } | null;
+      if (payload?.counted === true && typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('nox:view-counted', { detail: payload }));
+      }
+      if (payload?.counted === false && payload.reason === 'db_error') viewTrackedIds.delete(data.chapter.id);
+    } catch {
+      viewTrackedIds.delete(data.chapter.id);
+    }
+  }
+
   async function completeChapter() {
     if (completionClaimInFlight || xpAwardConfirmed || data.preview) return;
     completionClaimInFlight = true;
+    void trackChapterView();
 
     try {
       const totalPages = data.pages?.length || 1;
@@ -707,12 +735,6 @@
   );
 
   onMount(async () => {
-    fetch('/api/chapters/' + data.chapter.id + '/view', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: '{}',
-      credentials: 'same-origin'
-    }).catch(() => undefined);
     // Check offline status & hydrate local page blobs if present
     const off = await getOfflineChapter(data.chapter.id);
     if (off && off.pages?.length) {
@@ -834,6 +856,13 @@
     if (readerSettings.autoHideControls && uiVisible && !showSettingsModal && !showChaptersDrawer) {
       resetHideTimer();
     }
+    {
+      const scrollPos = window.scrollY + window.innerHeight;
+      const docHeight = document.documentElement.scrollHeight;
+      if (docHeight > 0 && scrollPos >= docHeight - 200) {
+        void trackChapterView();
+      }
+    }
     if (readerSettings.mode === 'webtoon' && !xpAwardConfirmed && !completionClaimInFlight) {
       const scrollPos = window.scrollY + window.innerHeight;
       const docHeight = document.documentElement.scrollHeight;
@@ -935,6 +964,7 @@
             href="/ler/{data.next.id}"
             class="chapter-quick-btn next"
             title="Próximo Capítulo ({chapterIdentityLabel(data.next)})"
+            onclick={() => void trackChapterView()}
             aria-label="Próximo Capítulo"
           >
             <ChevronRight size={16} />

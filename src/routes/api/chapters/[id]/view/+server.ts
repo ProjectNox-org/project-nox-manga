@@ -68,6 +68,8 @@ export const POST = async ({ params, locals, request, getClientAddress, platform
 
 
   let yugabyteCounted = false;
+  let dbError: string | null = null;
+  let row: any = null;
   let workViewsTotal = 0;
   let chapterViewsTotal = 0;
 
@@ -144,7 +146,7 @@ export const POST = async ({ params, locals, request, getClientAddress, platform
       1
     );
 
-    const row = res.rows[0];
+    row = res.rows[0];
     if (row?.chapter_id) {
       if (!row.recent && row.chapter_views_total !== null) {
         chapterViewsTotal = Number(row.chapter_views_total || 0);
@@ -153,7 +155,8 @@ export const POST = async ({ params, locals, request, getClientAddress, platform
       }
     }
   } catch (err: any) {
-    console.warn('[VIEW_YUGABYTE_RECORD_ERROR]', err?.message || err);
+    dbError = err?.message || String(err);
+    console.warn('[VIEW_YUGABYTE_RECORD_ERROR]', dbError);
   }
 
   if (yugabyteCounted) {
@@ -164,8 +167,13 @@ export const POST = async ({ params, locals, request, getClientAddress, platform
     });
   }
 
-  return json({
-    counted: false,
-    reason: 'deduplicated'
-  });
+  if (dbError) {
+    return json({ counted: false, reason: 'db_error' }, { status: 503 });
+  }
+
+  if (!row?.chapter_id) {
+    return json({ counted: false, reason: 'chapter_not_found' }, { status: 404 });
+  }
+
+  return json({ counted: false, reason: 'already_counted' });
 };
