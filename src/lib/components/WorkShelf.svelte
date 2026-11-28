@@ -896,12 +896,14 @@
 
   @media (max-width: 640px) {
     .shelf-section {
-      margin-bottom: 2.5rem;
+      margin-bottom: 1.6rem;
     }
 
     .shelf-header {
       align-items: flex-start;
-      margin-bottom: 0.85rem;
+      gap: 0.45rem;
+      margin-bottom: 0.6rem;
+      padding-bottom: 0.55rem;
     }
 
     .shelf-title {
@@ -909,12 +911,21 @@
     }
 
     .shelf-subtitle {
-      font-size: 0.8rem;
+      font-size: 0.78rem;
+      line-height: 1.3;
     }
 
     .shelf-actions {
-      gap: 0.6rem;
+      gap: 0.35rem;
       flex-shrink: 0;
+      margin-left: auto;
+    }
+
+    .expand-inline-btn {
+      font-size: 0.72rem;
+      padding: 0.28rem 0.55rem;
+      gap: 0.25rem;
+      border-radius: 7px;
     }
 
     .view-all-link span {
@@ -1114,6 +1125,7 @@
   @media (max-width: 640px) {
     .shelf-controls {
       gap: 0.6rem;
+      margin-top: 0.35rem;
     }
     .period-pills {
       width: 100%;
