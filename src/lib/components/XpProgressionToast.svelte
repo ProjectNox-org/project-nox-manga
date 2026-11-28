@@ -1,4 +1,6 @@
 <script lang="ts">
+  let lastRewardKey = '';
+  let lastRewardAt = 0;
   import { onMount, onDestroy } from 'svelte';
 
   interface XpToast {
@@ -15,6 +17,12 @@
   let lastTriggerKey = '';
 
   export function triggerXpReward(amount: number, title: string) {
+    const dedupeKey = `${Number(amount) || 0}|${title}`;
+    const dedupeNow = Date.now();
+    if (dedupeKey === lastRewardKey && dedupeNow - lastRewardAt < 1500) return;
+    lastRewardKey = dedupeKey;
+    lastRewardAt = dedupeNow;
+
     if (!amount || amount <= 0) return;
     const now = Date.now();
     const cleanTitle = title.replace(/^✦\s*\+\d+\s*XP\s*—\s*/, '').trim();
