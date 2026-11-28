@@ -42,6 +42,27 @@
   let periodLoading = $state(false);
   let currentWorks = $derived(remoteWorks ?? [...works, ...extraWorks]);
 
+  function periodMetric(work: any): { text: string; title: string } {
+    const total = Number(work.views_total || 0);
+    if (activePeriod === 'rising') {
+      const growth = Number(work.growth ?? 0);
+      const recent = Number(work.period_views ?? 0);
+      const prev = Number(work.previous_views ?? 0);
+      const pct = work.growth_pct;
+      const text = pct === null || pct === undefined ? `+${formatViews(growth)}` : `+${pct}%`;
+      const title = prev > 0
+        ? `${growth > 0 ? '+' : ''}${formatViews(growth)} visualizações vs. semana anterior · ${formatViews(recent)} nos últimos 7 dias`
+        : `Novo no ranking · ${formatViews(recent)} visualizações nos últimos 7 dias`;
+      return { text, title };
+    }
+    if (activePeriod === 'week' || activePeriod === 'month') {
+      const value = Number(work.period_views ?? 0);
+      const label = activePeriod === 'week' ? 'últimos 7 dias' : 'últimos 30 dias';
+      return { text: formatViews(value), title: `${formatViews(value)} visualizações nos ${label}` };
+    }
+    return { text: formatViews(total), title: `${formatViews(total)} visualizações acumuladas` };
+  }
+
   async function selectPeriod(key: string) {
     if (!endpoint || key === activePeriod || periodLoading) return;
     activePeriod = key;
@@ -278,6 +299,7 @@
           {@const isEager = shelfIndex === 0 && i < 8}
           {@const priority = shelfIndex === 0 && i < 2 ? 'high' : 'auto'}
           {@const titleText = decodeHtmlEntities(work.title)}
+          {@const metric = periodMetric(work)}
           <a href="/obra/{work.slug}" class="shelf-card">
             <div class="card-cover-box">
               <img
@@ -296,9 +318,9 @@
               <div class="card-glow"></div>
 
               <!-- Top-Left Views Badge -->
-              <div class="card-views-badge" title="{(work.views_total || (work as any).viewsTotal || 0)} visualizações">
+              <div class="card-views-badge" title={metric.title}>
                 <Eye size={10} />
-                <span>{formatViews(work.views_total || (work as any).viewsTotal)}</span>
+                <span>{metric.text}</span>
               </div>
 
               <!-- Top-Right Kind Badge -->
@@ -958,21 +980,22 @@
   .period-pills {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.4rem;
+    gap: 0.5rem;
     align-items: center;
+    margin-left: auto;
   }
 
   .period-pill {
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    background: rgba(255, 255, 255, 0.04);
-    color: #a1a1aa;
-    font-size: 0.74rem;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.06);
+    color: #d4d4d8;
+    font-size: 0.9rem;
     font-weight: 700;
-    letter-spacing: 0.02em;
-    padding: 0.35rem 0.7rem;
+    letter-spacing: 0.01em;
+    padding: 0.65rem 1.1rem;
     border-radius: 999px;
     cursor: pointer;
-    min-height: 28px;
+    min-height: 44px;
     transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
   }
 

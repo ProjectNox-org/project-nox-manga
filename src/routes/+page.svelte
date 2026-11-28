@@ -226,7 +226,8 @@
         periods={[
           { key: 'week', label: 'Semana' },
           { key: 'rising', label: 'Em ascensão' },
-          { key: 'month', label: 'Mês' }
+          { key: 'month', label: 'Mês' },
+          { key: 'total', label: 'Total' }
         ]}
       />
     {/if}

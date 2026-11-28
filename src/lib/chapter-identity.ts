@@ -74,9 +74,14 @@ export function chapterDisplayNumber(chapter: ChapterIdentityFields): string {
       ? String(chapter.number)
       : '');
   if (!raw) return 'Especial';
+  // Alguns registros legados gravaram o slug do capitulo como rotulo
+  // ("chapter-61", "obra-chapter-46"). O numero e a identidade publica; o
+  // slug nunca deve ser exibido como titulo.
+  const slugNumber = raw.match(/chapter[-_ ]?(\d+(?:\.\d+)?)/i);
+  const label = slugNumber ? slugNumber[1] : raw;
   // Inteiros migrados como `1.00`/`9.0` viram `1`/`9`. Fracionarios legitimos
   // (1.02, 1.5, 12.10, 3.50) nao terminam em zeros e ficam intactos.
-  return raw.replace(/^(\d+)\.0+$/, '$1');
+  return label.replace(/^(\d+)\.0+$/, '$1');
 }
 
 /** Stable sort for already-materialised Reader rows. Never parse a label as a float. */

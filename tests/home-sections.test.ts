@@ -20,24 +20,25 @@ describe('home sections', () => {
     expect(sql).toContain('idx_works_first_published');
   });
 
-  it('Em alta uses unique readers from reading and chapter_views windows', () => {
+  it('Em alta counts real views inside 7/30 day windows', () => {
     const t = read('src/lib/server/trending.ts');
-    expect(t).toContain('readersCte(7, 0)');
-    expect(t).toContain('readersCte(14, 7)');
+    expect(t).toContain('viewsCte(7, 0)');
+    expect(t).toContain('viewsCte(14, 7)');
     expect(t).toContain("period === 'month' ? 30 : 7");
-    expect(t).toContain('readersCte(days, 0)');
-    expect(t).toMatch(/count\(DISTINCT reader\)/i);
-    expect(t).toContain('previous_readers');
-    expect(t).not.toContain('views_total DESC\n       LIMIT');
+    expect(t).toContain('viewsCte(days, 0)');
+    expect(t).toContain('count(*)::int AS views');
+    expect(t).toContain('previous_views');
+    expect(t).toContain('period_views');
   });
 
-  it('home renders Em alta with three filters and no Mais Lidos', () => {
+  it('home renders Em alta with four filters and no Mais Lidos', () => {
     const page = read('src/routes/+page.svelte');
     expect(page).toContain('title="Em alta"');
     expect(page).not.toContain('title="Mais Lidos"');
     expect(page).toContain("label: 'Semana'");
     expect(page).toContain("label: 'Em ascensão'");
     expect(page).toContain("label: 'Mês'");
+    expect(page).toContain("label: 'Total'");
     expect(page).toContain('endpoint="/api/trending"');
   });
 

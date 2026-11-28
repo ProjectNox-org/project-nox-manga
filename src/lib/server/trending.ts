@@ -1,62 +1,68 @@
 import { executeYugabyteSql } from './yugabyte';
 
-export type TrendingPeriod = 'week' | 'rising' | 'month';
+export type TrendingPeriod = 'week' | 'rising' | 'month' | 'total';
 
 const TRENDING_TTL_MS = 5 * 60 * 1000;
 const TRENDING_COLUMNS = `
   id, slug, title, author, kind, status, featured, cover_id, content_rating, views_total
 `;
 
-const readersCte = (fromDays: number, toDays: number) => `
-  SELECT c.work_id, r.user_id::text AS reader, r.updated_at AS seen_at
-    FROM reading r
-    JOIN chapters c ON c.id = r.chapter_id
-   WHERE r.user_id IS NOT NULL
-     AND r.updated_at >= now() - interval '${fromDays} days'
-     AND r.updated_at <  now() - interval '${toDays} days'
-  UNION
-  SELECT cv.work_id, COALESCE(cv.user_id::text, cv.anonymous_hash), cv.viewed_at
+// Uma linha de chapter_views = uma visualizacao unica de leitor+capitulo.
+const viewsCte = (fromDays: number, toDays: number) => `
+  SELECT c.work_id, count(*)::int AS views
     FROM chapter_views cv
+    JOIN chapters c ON c.id = cv.chapter_id
    WHERE cv.viewed_at >= now() - interval '${fromDays} days'
      AND cv.viewed_at <  now() - interval '${toDays} days'
-     AND COALESCE(cv.user_id::text, cv.anonymous_hash) IS NOT NULL
+   GROUP BY c.work_id
 `;
 
 function periodSql(period: TrendingPeriod): string {
   if (period === 'rising') {
     return `
-      WITH cur AS (${readersCte(7, 0)}),
-           prev AS (${readersCte(14, 7)}),
+      WITH cur AS (${viewsCte(7, 0)}),
+           prev AS (${viewsCte(14, 7)}),
            agg AS (
              SELECT w.id, w.slug, w.title, w.author, w.kind, w.status, w.featured,
                     w.cover_id, w.content_rating, w.views_total,
-                    COALESCE(cur.n, 0)::int AS readers,
-                    COALESCE(prev.n, 0)::int AS previous_readers
+                    COALESCE(cur.views, 0)::int AS period_views,
+                    COALESCE(prev.views, 0)::int AS previous_views
                FROM works w
-               LEFT JOIN (SELECT work_id, count(DISTINCT reader) AS n FROM cur GROUP BY 1) cur
-                      ON cur.work_id = w.id
-               LEFT JOIN (SELECT work_id, count(DISTINCT reader) AS n FROM prev GROUP BY 1) prev
-                      ON prev.work_id = w.id
+               LEFT JOIN cur ON cur.work_id = w.id
+               LEFT JOIN prev ON prev.work_id = w.id
               WHERE w.published = true
            )
-      SELECT *, (readers - previous_readers)::int AS growth
+      SELECT *, (period_views - previous_views)::int AS growth,
+             CASE WHEN previous_views > 0
+                  THEN round((period_views - previous_views) * 100.0 / previous_views)
+                  ELSE NULL END AS growth_pct
         FROM agg
-       WHERE readers >= 2
-       ORDER BY growth DESC, ((readers + 1)::numeric / (previous_readers + 1)) DESC,
-                readers DESC, views_total DESC, id
+       WHERE period_views >= 3
+       ORDER BY growth DESC,
+                CASE WHEN previous_views > 0
+                     THEN (period_views::numeric / previous_views)
+                     ELSE period_views END DESC,
+                period_views DESC, views_total DESC, id
+       LIMIT 24;
+    `;
+  }
+  if (period === 'total') {
+    return `
+      SELECT ${TRENDING_COLUMNS}, views_total::int AS period_views
+        FROM works
+       WHERE published = true
+       ORDER BY views_total DESC, id
        LIMIT 24;
     `;
   }
   const days = period === 'month' ? 30 : 7;
   return `
-    WITH readers AS (${readersCte(days, 0)})
-    SELECT ${TRENDING_COLUMNS},
-           count(DISTINCT readers.reader)::int AS readers
+    WITH cur AS (${viewsCte(days, 0)})
+    SELECT ${TRENDING_COLUMNS}, cur.views::int AS period_views
       FROM works w
-      JOIN readers ON readers.work_id = w.id
+      JOIN cur ON cur.work_id = w.id
      WHERE w.published = true
-     GROUP BY w.id
-     ORDER BY readers DESC, w.views_total DESC, w.id
+     ORDER BY cur.views DESC, w.views_total DESC, w.id
      LIMIT 24;
   `;
 }

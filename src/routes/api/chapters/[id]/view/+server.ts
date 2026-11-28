@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { executeYugabyteSql, withYugabyteReadSession, invalidateYugabyteLkgPrefix } from '$lib/server/yugabyte';
 import { invalidateHomePublicCache } from '$lib/server/home-cache';
+import { invalidateTrendingCache } from '$lib/server/trending';
 
 async function hashString(str: string): Promise<string> {
   const encoder = new TextEncoder();
@@ -162,6 +163,7 @@ export const POST = async ({ params, locals, request, getClientAddress, platform
 
   if (yugabyteCounted) {
     invalidateHomePublicCache();
+    invalidateTrendingCache();
     // Bundles LKG da home ordenam/exibem views_total: nao podem sobreviver a uma view nova.
     invalidateYugabyteLkgPrefix('home_bundle');
     invalidateYugabyteLkgPrefix('home_works');
