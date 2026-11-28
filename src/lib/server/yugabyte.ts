@@ -586,7 +586,7 @@ export async function fetchHomeBundleFromYugabyte(platformEnv?: any): Promise<Yu
             SELECT ${HOME_WORK_SELECT_COLUMNS}
             FROM works
             WHERE published = true
-            ORDER BY updated_at DESC
+            ORDER BY first_published_at DESC, id DESC
             LIMIT 24
           ) w), '[]'::json) AS home_works,
           COALESCE((SELECT json_agg(mr) FROM (
@@ -652,7 +652,7 @@ export async function fetchHomeWorksFromYugabyte(platformEnv?: any): Promise<Yug
         SELECT ${HOME_WORK_SELECT_COLUMNS}
         FROM works
         WHERE published = true
-        ORDER BY updated_at DESC
+        ORDER BY first_published_at DESC, id DESC
         LIMIT 24;
       `;
       const res = await executeYugabyteSql<YugabyteWork>(sql, [], platformEnv);

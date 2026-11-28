@@ -21,6 +21,8 @@
     loadMoreSort?: 'latest' | 'most_read';
     works: Work[];
     shelfIndex?: number;
+    periods?: Array<{ key: string; label: string }>;
+    endpoint?: string;
   };
 
   let {
@@ -29,11 +31,35 @@
     badge,
     loadMoreSort,
     works = [],
-    shelfIndex = 1
+    shelfIndex = 1,
+    periods = [],
+    endpoint
   }: Props = $props();
 
   let extraWorks = $state<Work[]>([]);
-  let currentWorks = $derived([...works, ...extraWorks]);
+  let remoteWorks = $state<Work[] | null>(null);
+  let activePeriod = $state(periods[0]?.key ?? '');
+  let periodLoading = $state(false);
+  let currentWorks = $derived(remoteWorks ?? [...works, ...extraWorks]);
+
+  async function selectPeriod(key: string) {
+    if (!endpoint || key === activePeriod || periodLoading) return;
+    activePeriod = key;
+    periodLoading = true;
+    isExpanded = false;
+    extraWorks = [];
+    try {
+      const res = await fetch(`${endpoint}?period=${encodeURIComponent(key)}`);
+      if (!res.ok) throw new Error('Falha ao carregar o ranking');
+      const payload = await res.json();
+      remoteWorks = Array.isArray(payload.works) ? payload.works : [];
+      updateScrollState();
+    } catch {
+      activePeriod = periods[0]?.key ?? activePeriod;
+    } finally {
+      periodLoading = false;
+    }
+  }
   let isExpanded = $state(false);
   let loadingMore = $state(false);
   let loadMoreError = $state(false);
@@ -172,6 +198,23 @@
           <span class="shelf-subtitle">{subtitle}</span>
         {/if}
       </div>
+
+      {#if periods.length > 0}
+        <div class="period-pills" role="group" aria-label="Período do ranking">
+          {#each periods as period (period.key)}
+            <button
+              type="button"
+              class="period-pill"
+              class:is-active={activePeriod === period.key}
+              aria-pressed={activePeriod === period.key}
+              disabled={periodLoading && activePeriod === period.key}
+              onclick={() => selectPeriod(period.key)}
+            >
+              {period.label}
+            </button>
+          {/each}
+        </div>
+      {/if}
 
       <div class="shelf-actions">
         {#if loadMoreSort}
@@ -910,5 +953,42 @@
   .blurred-cover {
     filter: blur(18px) brightness(0.65);
     transform: scale(1.12);
+  }
+
+  .period-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    align-items: center;
+  }
+
+  .period-pill {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+    color: #a1a1aa;
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    padding: 0.35rem 0.7rem;
+    border-radius: 999px;
+    cursor: pointer;
+    min-height: 28px;
+    transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+  }
+
+  .period-pill:hover {
+    color: #f2f0f7;
+    border-color: rgba(223, 194, 141, 0.35);
+  }
+
+  .period-pill.is-active {
+    color: #14101f;
+    background: #dfc28d;
+    border-color: #dfc28d;
+  }
+
+  .period-pill:focus-visible {
+    outline: 2px solid #dfc28d;
+    outline-offset: 2px;
   }
 </style>

@@ -215,14 +215,19 @@
       />
     {/if}
 
-    <!-- 4. Mais Lidos (Strictly based on real read counts / views_total) -->
+    <!-- 4. Em alta (leitores unicos reais: semana, ascensao, mes) -->
     {#if data.mostReadWorks && data.mostReadWorks.length >= 2}
       <WorkShelf
-        title="Mais Lidos"
-        subtitle="Obras mais populares e acessadas pelos leitores"
+        title="Em alta"
+        subtitle="Obras em destaque pelos leitores"
         works={data.mostReadWorks}
-        loadMoreSort="most_read"
         shelfIndex={1}
+        endpoint="/api/trending"
+        periods={[
+          { key: 'week', label: 'Semana' },
+          { key: 'rising', label: 'Em ascensão' },
+          { key: 'month', label: 'Mês' }
+        ]}
       />
     {/if}
 
@@ -362,6 +367,8 @@
 
   .continue-card {
     flex: 0 0 320px;
+    height: 116px;
+    box-sizing: border-box;
     scroll-snap-align: start;
     display: flex;
     align-items: center;
@@ -443,9 +450,15 @@
     color: #ffffff;
     font-size: 0.96rem;
     font-weight: 700;
-    white-space: nowrap;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: normal;
+    line-height: 1.3;
+    min-height: 2.6em;
   }
 
   .continue-ch-info {

@@ -7,6 +7,7 @@ import {
 } from '$lib/server/yugabyte';
 import { chapterDisplayNumber, compareChapterIdentity } from '$lib/chapter-identity';
 import { enrichReadingRowsWithCatalog } from '$lib/server/reading-history';
+import { getTrendingWorks } from '$lib/server/trending';
 import {
   readHomePublicCache,
   writeHomePublicCache,
@@ -370,6 +371,14 @@ export const load = async ({ locals, setHeaders, url, platform, cookies }: any) 
   } else {
     console.warn('[MAIS_LIDOS_FALLBACK] mostReadRes empty or error, falling back to works slice:', mostReadRes?.error);
     mostReadWorks = works.slice(0, 24);
+  }
+
+  // "Em alta" (semana): leitores unicos reais dos ultimos 7 dias.
+  try {
+    const trendingWeek = await getTrendingWorks(platform?.['en' + 'v'], 'week');
+    if (trendingWeek.length > 0) mostReadWorks = trendingWeek;
+  } catch {
+    /* mantem o fallback anterior */
   }
 
   let isStale = false;
