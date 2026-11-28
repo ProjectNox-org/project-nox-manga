@@ -36,7 +36,7 @@ describe('home sections', () => {
     expect(page).toContain('title="Em alta"');
     expect(page).not.toContain('title="Mais Lidos"');
     expect(page).toContain("label: 'Semanal'");
-    expect(page).toContain("label: 'Em ascensão'");
+    expect(page).not.toContain("label: 'Em ascensão'");
     expect(page).toContain("label: 'Mensal'");
     expect(page).toContain("label: 'Total'");
     expect(page).toContain('endpoint="/api/trending"');

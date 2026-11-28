@@ -225,7 +225,6 @@
         endpoint="/api/trending"
         periods={[
           { key: 'week', label: 'Semanal' },
-          { key: 'rising', label: 'Em ascensão' },
           { key: 'month', label: 'Mensal' },
           { key: 'total', label: 'Total' }
         ]}
