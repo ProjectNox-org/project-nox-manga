@@ -7,6 +7,13 @@ import {
 } from '$lib/server/yugabyte';
 import { chapterDisplayNumber, compareChapterIdentity } from '$lib/chapter-identity';
 import { enrichReadingRowsWithCatalog } from '$lib/server/reading-history';
+import {
+  readHomePublicCache,
+  writeHomePublicCache,
+  HOME_CACHE_TTL_MS,
+  MAX_LKG_FALLBACK_AGE_MS,
+  type HomeCachePayload
+} from '$lib/server/home-cache';
 
 async function fetchUserReadingFromYugabyte(userId: string, platformEnv?: any): Promise<{ data: any[] }> {
   try {
@@ -33,30 +40,17 @@ async function fetchUserReadingFromYugabyte(userId: string, platformEnv?: any): 
   }
 }
 
-type HomeCachePayload = {
-  timestamp: number;
-  works: any[];
-  featuredList: any[];
-  recentReleases: any[];
-  mostReadWorks: any[];
-};
-
-// Public content cache (updated dynamically from live database queries)
-let homePublicCache: HomeCachePayload | null = null;
-const HOME_CACHE_TTL_MS = 60_000;
-const MAX_LKG_FALLBACK_AGE_MS = 15 * 60 * 1000; // 15-minute maximum safe stale fallback window
+// Cache publico da home vive em $lib/server/home-cache para poder ser invalidado pelo endpoint de views.
 
 export const load = async ({ locals, setHeaders, url, platform, cookies }: any) => {
+  let homePublicCache: HomeCachePayload | null = readHomePublicCache();
   const forceFresh = url.searchParams.has('fresh') || url.searchParams.has('nocache');
   // Age and blur preferences affect the server-rendered page. Only the default,
   // truly anonymous Home response is safe to share at the edge.
   const hasHomePreference = Boolean(cookies.get('nox-age-status') || cookies.get('nox-blur-nsfw'));
   const canSharePublicHome = !locals.user && !forceFresh && !hasHomePreference;
-  const cacheControl = forceFresh
-    ? 'private, no-cache, no-store, must-revalidate'
-    : canSharePublicHome
-      ? 'public, max-age=30, s-maxage=30, stale-while-revalidate=60'
-      : 'private, max-age=15, stale-while-revalidate=30';
+  // Contadores de views sao dinamicos: HTML nunca vem de cache de browser ou edge.
+  const cacheControl = 'private, no-cache, max-age=0, must-revalidate';
   setHeaders({
     'cache-control': cacheControl
   });
@@ -464,13 +458,14 @@ export const load = async ({ locals, setHeaders, url, platform, cookies }: any) 
   // Stale-While-Revalidate / Last-Known-Good fallback
   if (works.length > 0 && recentReleases.length > 0 && !isDegraded) {
     // Only cache verified complete and fresh data
-    homePublicCache = {
+    writeHomePublicCache({
       timestamp: Date.now(),
       works,
       featuredList,
       recentReleases,
       mostReadWorks
-    };
+    });
+    homePublicCache = readHomePublicCache();
   } else if (homePublicCache && (Date.now() - homePublicCache.timestamp < MAX_LKG_FALLBACK_AGE_MS) && (recentReleases.length === 0 || isDegraded)) {
     // Upstream query failed or returned empty due to degradation - use Last-Known-Good from real previous runs
     works = homePublicCache.works;

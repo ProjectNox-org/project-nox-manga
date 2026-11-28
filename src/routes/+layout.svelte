@@ -107,6 +107,39 @@
     };
     window.addEventListener('nox-xp-awarded', handleXpAwarded);
 
+    // Contador de views e dinamico: leitor avisa a obra/home para revalidar do servidor.
+    const isViewCounterRoute = () =>
+      currentPath === '/' ||
+      currentPath.startsWith('/obra/') ||
+      currentPath === '/catalogo' ||
+      currentPath === '/lancamentos';
+    const handleViewCounted = () => {
+      if (isViewCounterRoute()) void invalidateAll();
+    };
+    window.addEventListener('nox:view-counted', handleViewCounted);
+
+    const hasFreshViewMarker = () => {
+      try {
+        const raw = sessionStorage.getItem('nox:view-counted');
+        if (!raw) return false;
+        const parsed = JSON.parse(raw) as { ts?: number };
+        return typeof parsed?.ts === 'number' && Date.now() - parsed.ts < 30 * 60 * 1000;
+      } catch {
+        return false;
+      }
+    };
+    const revalidateViewsIfNeeded = () => {
+      if (hasFreshViewMarker() && isViewCounterRoute()) void invalidateAll();
+    };
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) revalidateViewsIfNeeded();
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') revalidateViewsIfNeeded();
+    };
+    window.addEventListener('pageshow', handlePageShow);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     const handleNotificationsUpdate = (event: Event) => {
       const detail = (event as CustomEvent<{ unread?: number; delta?: number }>).detail;
       if (typeof detail?.unread === 'number') {
@@ -142,6 +175,9 @@
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('nox:profile-updated', handleProfileUpdate);
       window.removeEventListener('nox-xp-awarded', handleXpAwarded);
+      window.removeEventListener('nox:view-counted', handleViewCounted);
+      window.removeEventListener('pageshow', handlePageShow);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('nox:notifications-updated', handleNotificationsUpdate);
       notifsBc?.close();
     };
