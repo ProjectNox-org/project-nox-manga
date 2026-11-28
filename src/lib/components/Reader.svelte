@@ -544,6 +544,14 @@
       const payload = (await res.json().catch(() => null)) as { counted?: boolean; reason?: string } | null;
       if (payload?.counted === true && typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('nox:view-counted', { detail: payload }));
+        try {
+          sessionStorage.setItem(
+            'nox:view-counted',
+            JSON.stringify({ chapterId: data.chapter.id, workId: data.chapter.work_id, ts: Date.now() })
+          );
+        } catch {
+          /* sessionStorage indisponivel */
+        }
       }
       if (payload?.counted === false && payload.reason === 'db_error') viewTrackedIds.delete(data.chapter.id);
     } catch {

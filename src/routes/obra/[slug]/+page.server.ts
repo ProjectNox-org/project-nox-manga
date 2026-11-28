@@ -68,6 +68,28 @@ export const load = async ({ locals, params, url, cookies, platform, setHeaders 
     error(404, 'Obra não encontrada');
   }
 
+  // Contadores dinamicos: o bundle acima pode vir de cache; views sempre frescas.
+  try {
+    const freshViews = await executeYugabyteSql(
+      `SELECT w.views_total AS work_views,
+              COALESCE(json_object_agg(c.id, c.views_total), '{}'::json) AS chapter_views
+         FROM public.works w
+         LEFT JOIN public.chapters c ON c.work_id = w.id
+        WHERE w.id = $1::uuid
+        GROUP BY w.views_total`,
+      [work.id],
+      platform?.['en' + 'v']
+    );
+    const fr = freshViews.rows[0];
+    if (fr) {
+      work.views_total = Number(fr.work_views || 0);
+      const map = fr.chapter_views || {};
+      chaptersList = chaptersList.map((c: any) => ({ ...c, views_total: Number(map[c.id] ?? 0) }));
+    }
+  } catch (err: any) {
+    console.warn('[OBRA_FRESH_VIEWS_WARN]', err?.message || err);
+  }
+
   // Redirect to canonical slug if accessed by UUID
   if (isTargetUuid && work.slug && work.slug !== params.slug) {
     redirect(301, `/obra/${work.slug}`);
@@ -82,7 +104,7 @@ export const load = async ({ locals, params, url, cookies, platform, setHeaders 
       });
     } else {
       setHeaders({
-        'cache-control': 'public, max-age=60, s-maxage=120, stale-while-revalidate=300'
+        'cache-control': 'private, no-cache, max-age=0, must-revalidate'
       });
     }
   }

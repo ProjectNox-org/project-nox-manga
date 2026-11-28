@@ -24,7 +24,7 @@
     SlidersHorizontal,
     X
   } from '@lucide/svelte';
-  import { goto } from '$app/navigation';
+  import { goto, invalidateAll } from '$app/navigation';
   import { action } from '$lib/actions';
   import { kindLabels, statusLabels, date } from '$lib/types';
   import { resolveCoverUrl } from '$lib/covers';
@@ -81,6 +81,19 @@
   }
 
   onMount(async () => {
+    try {
+      const marker = sessionStorage.getItem('nox:view-counted');
+      if (marker) {
+        const parsed = JSON.parse(marker) as { workId?: string; ts?: number };
+        const fresh = typeof parsed.ts === 'number' && Date.now() - parsed.ts < 30 * 60 * 1000;
+        if (fresh && parsed.workId && parsed.workId === data.work.id) {
+          sessionStorage.removeItem('nox:view-counted');
+          await invalidateAll();
+        }
+      }
+    } catch {
+      /* revalidacao best-effort */
+    }
     if (isOfflineSupported()) {
       try {
         const offlineList = await getOfflineChapters();
@@ -2246,8 +2259,9 @@
     gap: 3px;
     font-size: 0.68rem;
     font-weight: 700;
-    color: rgba(226, 232, 240, 0.6);
-    background: rgba(255, 255, 255, 0.05);
+    color: #34d399;
+    background: rgba(52, 211, 153, 0.14);
+    border: 1px solid rgba(52, 211, 153, 0.35);
     padding: 1px 6px;
     border-radius: 999px;
   }
