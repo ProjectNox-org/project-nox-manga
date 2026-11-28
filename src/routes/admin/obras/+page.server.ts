@@ -30,8 +30,8 @@ export const load = async ({ url, platform }: any) => {
     cacheKey,
     20_000,
     async () => {
-      let whereClauses: string[] = ['1=1'];
-      let params: any[] = [];
+      const whereClauses: string[] = ['1=1'];
+      const params: any[] = [];
 
       if (kind !== 'ALL') {
         params.push(kind);
@@ -45,7 +45,7 @@ export const load = async ({ url, platform }: any) => {
       if (search) {
         params.push(`%${search}%`);
         const idx = params.length;
-        whereClauses.push(`(title ILIKE $${idx} OR slug ILIKE $${idx} OR author ILIKE $${idx})`);
+        whereClauses.push(`(search_text ILIKE $${idx} OR title ILIKE $${idx} OR slug ILIKE $${idx} OR author ILIKE $${idx})`);
       }
 
       const whereSql = whereClauses.join(' AND ');
