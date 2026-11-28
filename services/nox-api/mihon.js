@@ -3,7 +3,6 @@ import crypto from 'node:crypto';
 import { buildWorkSearchCondition } from './search-helper.js';
 
 const MAX_LIMIT = 50;
-const PAGES_CACHE_TTL = 300;
 
 const lim = (v, def, max) => {
   const n = parseInt(v ?? '', 10);
@@ -13,7 +12,7 @@ const lim = (v, def, max) => {
 const first = (v, def) => (v ? String(v).split(',')[0].trim() : def);
 const base = (req) => {
   const proto = first(req.headers['x-forwarded-proto'], 'http').replace(/[^a-z]/gi, '') || 'http';
-  const host = first(req.headers['x-forwarded-host'], first(req.headers.host, '127.0.0.1')).replace(/[^a-z0-9.:\[\]-]/gi, '');
+  const host = first(req.headers['x-forwarded-host'], first(req.headers.host, '127.0.0.1')).replace(/[^a-z0-9.:[\]-]/gi, '');
   return `${proto}://${host}`;
 };
 
@@ -33,8 +32,6 @@ async function usuarioToken(req, pool) {
 }
 
 export default async function mihonRoutes(app, pool) {
-  const cache = new Map();
-
   app.get('/api/mihon/catalog', async (req, reply) => {
     const page = lim(req.query.page, 1, 10000);
     const limit = lim(req.query.limit, 24, MAX_LIMIT);

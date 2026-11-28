@@ -30,8 +30,8 @@ export const load = async ({ url, platform }: any) => {
     cacheKey,
     20_000,
     async () => {
-      let whereClauses: string[] = ['1=1'];
-      let params: any[] = [];
+      const whereClauses: string[] = ['1=1'];
+      const params: any[] = [];
 
       if (kind !== 'ALL') {
         params.push(kind);

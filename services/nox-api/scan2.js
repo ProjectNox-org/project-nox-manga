@@ -2,7 +2,6 @@
 import { buildWorkSearchCondition } from './search-helper.js';
 
 export default async function scan2Routes(app, pool) {
-  const j = (x) => globalThis['pro'+'cess']['e'+'nv'];
   async function usuario(req) {
     const tok = req.cookies?.['nox-auth-token'];
     if (!tok) return null;
@@ -89,7 +88,7 @@ export default async function scan2Routes(app, pool) {
     return { ok: true, total: rows.length, itens: rows };
   });
 
-  app.get('/api/scan/production/files/:id', async (req, reply) => reply.code(503).send({ erro: 'midia_sem_credencial' }));
-  app.post('/api/scan/production/upload', async (req, reply) => reply.code(503).send({ erro: 'midia_sem_credencial' }));
-  app.post('/api/scan/attachments/upload', async (req, reply) => reply.code(503).send({ erro: 'midia_sem_credencial' }));
+  app.get('/api/scan/production/files/:id', async (_req, reply) => reply.code(503).send({ erro: 'midia_sem_credencial' }));
+  app.post('/api/scan/production/upload', async (_req, reply) => reply.code(503).send({ erro: 'midia_sem_credencial' }));
+  app.post('/api/scan/attachments/upload', async (_req, reply) => reply.code(503).send({ erro: 'midia_sem_credencial' }));
 }

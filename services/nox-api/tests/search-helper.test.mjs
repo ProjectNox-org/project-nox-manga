@@ -1,6 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildWorkSearchCondition, escapeLike, foldAccents } from '../search-helper.js';
+import {
+  buildWorkSearchCondition,
+  buildWorkSearchRelevanceOrder,
+  escapeLike,
+  foldAccents,
+} from '../search-helper.js';
 
 test('foldAccents normalizes PT-BR diacritics consistently with PostgreSQL index_work_search', () => {
   assert.equal(foldAccents('O Começo Depois do Fim'), 'o comeco depois do fim');
@@ -57,4 +62,16 @@ test('catalog.js count filter placeholder shifting stays aligned across search +
     'WHERE (w.search_text ILIKE $1 OR w.search_text ILIKE $2 OR w.slug = $3) AND w.kind::text = $4 AND w.status::text = $5',
   );
   assert.equal(fp.length, 5);
+});
+
+test('buildWorkSearchRelevanceOrder builds parameterized exact-match priority tiers for Latin and CJK queries', () => {
+  const latin = buildWorkSearchRelevanceOrder('w.', 'Solo Leveling', 5);
+  assert.match(latin.orderPrefix, /lower\(w\.title\) = \$5 OR w\.slug = \$7/);
+  assert.match(latin.orderPrefix, /unnest\(COALESCE\(w\.aliases, ARRAY\[\]::text\[\]\)\) _a WHERE lower\(_a\) = \$5/);
+  assert.match(latin.orderPrefix, /w\.title ILIKE \$6/);
+  assert.deepEqual(latin.params, ['solo leveling', 'Solo Leveling%', 'solo-leveling']);
+
+  const cjk = buildWorkSearchRelevanceOrder('w.', '나 혼자만 레벨업', 4);
+  assert.match(cjk.orderPrefix, /lower\(w\.title\) = \$4 THEN 0/);
+  assert.deepEqual(cjk.params, ['나 혼자만 레벨업', '나 혼자만 레벨업%']);
 });

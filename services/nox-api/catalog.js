@@ -1,5 +1,5 @@
 // Rotas de catálogo (somente leitura) — consumidas pelo Astro SSR.
-import { buildWorkSearchCondition } from './search-helper.js';
+import { buildWorkSearchCondition, buildWorkSearchRelevanceOrder } from './search-helper.js';
 
 const LIM_MAX = 100;
 
@@ -38,6 +38,10 @@ export default async function catalog(app, pool) {
     const ordem = sort === 'populares' ? 'w.views_total DESC NULLS LAST'
       : sort === 'az' ? 'w.title ASC'
       : 'w.updated_at DESC NULLS LAST';
+    const rank = q && sort === 'recentes'
+      ? buildWorkSearchRelevanceOrder('w.', q, fp.length + 3)
+      : { orderPrefix: '', params: [] };
+    const ordemFinal = rank.orderPrefix ? `${rank.orderPrefix}${ordem}` : ordem;
 
     const { rows } = await pool.query(
       `SELECT w.id, w.slug, w.title, w.kind, w.status, w.year, w.cover_id,
@@ -45,9 +49,9 @@ export default async function catalog(app, pool) {
               (SELECT count(*) FROM chapters c WHERE c.work_id = w.id) AS capitulos
          FROM works w
          ${filtro}
-        ORDER BY ${ordem}
+        ORDER BY ${ordemFinal}
         LIMIT $1 OFFSET $2`,
-      [limit, offset, ...fp]
+      [limit, offset, ...fp, ...rank.params]
     );
     const tot = await pool.query(
       `SELECT count(*)::int AS n FROM works w ${filtroTot}`,

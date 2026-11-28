@@ -51,3 +51,38 @@ export function buildWorkSearchCondition(aliasPrefix, rawQuery, startParamIndex)
     params,
   };
 }
+
+/**
+ * Builds a parameterized CASE relevance prefix so exact title/slug/alias matches
+ * outrank partial substring matches while preserving caller sort tie-breakers.
+ */
+export function buildWorkSearchRelevanceOrder(aliasPrefix, rawQuery, startParamIndex) {
+  const clean = String(rawQuery || '').trim().replace(/\s+/g, ' ');
+  if (!clean) return { orderPrefix: '', params: [] };
+
+  const exactLower = clean.toLowerCase();
+  const folded = foldAccents(clean);
+  const slugExact = folded
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  const prefixPat = escapeLike(clean) + '%';
+
+  const params = [exactLower, prefixPat];
+  const exactIdx = startParamIndex;
+  const prefixIdx = startParamIndex + 1;
+
+  let tier0 = `lower(${aliasPrefix}title) = $${exactIdx}`;
+  if (slugExact) {
+    params.push(slugExact);
+    const slugIdx = startParamIndex + params.length - 1;
+    tier0 = `(${tier0} OR ${aliasPrefix}slug = $${slugIdx})`;
+  }
+
+  const tier1 = `EXISTS (SELECT 1 FROM unnest(COALESCE(${aliasPrefix}aliases, ARRAY[]::text[])) _a WHERE lower(_a) = $${exactIdx})`;
+  const tier2 = `${aliasPrefix}title ILIKE $${prefixIdx}`;
+
+  return {
+    orderPrefix: `CASE WHEN ${tier0} THEN 0 WHEN ${tier1} THEN 1 WHEN ${tier2} THEN 2 ELSE 3 END ASC, `,
+    params,
+  };
+}
